@@ -1,0 +1,15 @@
+# Railway 部署配置文件
+# 这个文件告诉Railway如何部署应用
+
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "uvicorn api_server:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/api/v1/health"
+restartPolicyType = "always"
+
+[env]
+PORT = { default = "8000" }
+ENVIRONMENT = "production"
+MATPLOTLIB_BACKEND = "Agg"

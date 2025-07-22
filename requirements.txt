@@ -1,0 +1,18 @@
+# FastAPI后端依赖
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+
+# 可视化相关（已有）
+matplotlib>=3.7.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# 异步任务处理（可选，后续可添加）
+# celery==5.3.4
+# redis==5.0.1
+
+# 开发工具
+pytest==7.4.3
+pytest-asyncio==0.21.1

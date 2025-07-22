@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathViz - 数学题目可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .main {
+            padding: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status.pending {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            display: block;
+        }
+        
+        .status.processing {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+        
+        .status.completed {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+        
+        .status.failed {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e1e1e1;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        
+        .result {
+            margin-top: 25px;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result img {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .analysis {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .analysis h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .analysis-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        
+        .analysis-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .examples {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        
+        .examples h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .example {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: 1px solid #e1e1e1;
+        }
+        
+        .example:hover {
+            background: #f0f0f0;
+        }
+        
+        .example strong {
+            color: #667eea;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .main {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧮 MathViz</h1>
+            <p>将数学应用题转换为直观的可视化图表</p>
+        </div>
+        
+        <div class="main">
+            <div class="examples">
+                <h3>📝 示例题目</h3>
+                <div class="example" onclick="fillExample(this, '相遇')">
+                    <strong>相遇问题：</strong>甲、乙两地相距480公里，小张开车从甲地出发前往乙地，速度为60公里/小时；同时小李开车从乙地出发前往甲地，速度为80公里/小时。问他们出发后多长时间相遇？
+                </div>
+                <div class="example" onclick="fillExample(this, '追及')">
+                    <strong>追及问题：</strong>一辆客车和一辆货车同时从同一地点出发，同向而行。客车速度为90公里/小时，货车速度为60公里/小时。客车先行2小时后，货车才开始加速，速度提高到120公里/小时。
+                </div>
+            </div>
+            
+            <form id="problemForm">
+                <div class="form-group">
+                    <label for="problemText">📚 输入数学题目：</label>
+                    <textarea 
+                        id="problemText" 
+                        placeholder="请输入完整的数学应用题描述，系统将自动解析并生成可视化图表..."
+                        required
+                    ></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="problemType">🎯 题目类型：</label>
+                    <select id="problemType">
+                        <option value="auto">自动检测</option>
+                        <option value="meeting">相遇问题</option>
+                        <option value="chase">追及问题</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn" id="submitBtn">
+                    🚀 生成可视化图表
+                </button>
+            </form>
+            
+            <div id="status" class="status">
+                <div id="statusText">正在处理中...</div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div id="result" class="result">
+                <img id="resultImage" src="" alt="生成的可视化图表">
+                <div id="analysis" class="analysis">
+                    <h3>📊 题目分析结果</h3>
+                    <div id="analysisContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8002/api/v1';
+        
+        let currentTaskId = null;
+        let statusTimer = null;
+        
+        // 填充示例题目
+        function fillExample(element, type) {
+            const text = element.textContent.replace(/^[^：]+：/, '');
+            document.getElementById('problemText').value = text;
+            document.getElementById('problemType').value = type === '相遇' ? 'meeting' : 'chase';
+        }
+        
+        // 提交表单
+        document.getElementById('problemForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const text = document.getElementById('problemText').value.trim();
+            const problemType = document.getElementById('problemType').value;
+            
+            if (!text) {
+                alert('请输入题目内容');
+                return;
+            }
+            
+            // 重置状态
+            resetUI();
+            
+            try {
+                const response = await fetch(`${API_BASE}/problems/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        problem_type: problemType,
+                        user_id: 'demo_user'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('提交失败');
+                }
+                
+                const result = await response.json();
+                currentTaskId = result.task_id;
+                
+                // 显示等待状态
+                showStatus('pending', '题目已提交，正在生成可视化图表...');
+                
+                // 开始轮询状态
+                startStatusPolling();
+                
+            } catch (error) {
+                showStatus('failed', `提交失败: ${error.message}`);
+            }
+        });
+        
+        // 重置UI
+        function resetUI() {
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('result').classList.remove('show');
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('progressFill').style.width = '0%';
+            
+            if (statusTimer) {
+                clearInterval(statusTimer);
+                statusTimer = null;
+            }
+        }
+        
+        // 显示状态
+        function showStatus(type, message, progress = 0) {
+            const statusDiv = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            const progressFill = document.getElementById('progressFill');
+            
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            statusText.textContent = message;
+            progressFill.style.width = `${progress}%`;
+        }
+        
+        // 开始状态轮询
+        function startStatusPolling() {
+            statusTimer = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/problems/status/${currentTaskId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('状态查询失败');
+                    }
+                    
+                    const status = await response.json();
+                    
+                    switch (status.status) {
+                        case 'pending':
+                            showStatus('pending', '任务等待中...', status.progress);
+                            break;
+                            
+                        case 'processing':
+                            showStatus('processing', '正在生成图表...', status.progress);
+                            break;
+                            
+                        case 'completed':
+                            showStatus('completed', '图表生成完成！', 100);
+                            clearInterval(statusTimer);
+                            await displayResult(status.result);
+                            document.getElementById('submitBtn').disabled = false;
+                            break;
+                            
+                        case 'failed':
+                            showStatus('failed', `生成失败: ${status.error || '未知错误'}`);
+                            clearInterval(statusTimer);
+                            document.getElementById('submitBtn').disabled = false;
+                            break;
+                    }
+                    
+                } catch (error) {
+                    showStatus('failed', `状态查询失败: ${error.message}`);
+                    clearInterval(statusTimer);
+                    document.getElementById('submitBtn').disabled = false;
+                }
+            }, 2000); // 每2秒查询一次
+        }
+        
+        // 显示结果
+        async function displayResult(result) {
+            const imageElement = document.getElementById('resultImage');
+            const resultDiv = document.getElementById('result');
+            const analysisContent = document.getElementById('analysisContent');
+            
+            // 设置图片源
+            imageElement.src = `${API_BASE}/images/${result.image_id}`;
+            
+            // 显示分析结果
+            const analysis = result.problem_analysis;
+            let analysisHTML = '';
+            
+            if (analysis.type === 'meeting') {
+                analysisHTML = `
+                    <div class="analysis-item">
+                        <span>题目类型：</span>
+                        <span>相遇问题</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>总距离：</span>
+                        <span>${analysis.distance} 公里</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>车1速度：</span>
+                        <span>${analysis.speed1} 公里/小时</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>车2速度：</span>
+                        <span>${analysis.speed2} 公里/小时</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>相遇时间：</span>
+                        <span>${analysis.meeting_time?.toFixed(2)} 小时</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>相遇地点：</span>
+                        <span>${analysis.meeting_point?.toFixed(1)} 公里处</span>
+                    </div>
+                `;
+            } else if (analysis.type === 'chase') {
+                analysisHTML = `
+                    <div class="analysis-item">
+                        <span>题目类型：</span>
+                        <span>追及问题</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>是否能追上：</span>
+                        <span>${analysis.can_chase ? '是' : '否'}</span>
+                    </div>
+                `;
+                if (analysis.chase_time) {
+                    analysisHTML += `
+                        <div class="analysis-item">
+                            <span>追及时间：</span>
+                            <span>${analysis.chase_time.toFixed(2)} 小时</span>
+                        </div>
+                        <div class="analysis-item">
+                            <span>追及地点：</span>
+                            <span>${analysis.chase_point?.toFixed(1)} 公里处</span>
+                        </div>
+                    `;
+                }
+            }
+            
+            analysisContent.innerHTML = analysisHTML;
+            resultDiv.classList.add('show');
+        }
+        
+        // 页面加载完成后启用提交按钮
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('submitBtn').disabled = false;
+        });
+    </script>
+</body>
+</html>
