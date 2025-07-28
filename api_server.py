@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 数学题目可视化 API 服务
-FastAPI后端实现
+FastAPI后端实现 - 支持传统模式(v1)和AI驱动模式(v2)
 """
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -17,11 +17,19 @@ import time
 from datetime import datetime
 from text_to_visual import MathProblemVisualizer
 
+# 导入v2 AI驱动的端点
+try:
+    from backend.api.endpoints import router as v2_router
+    V2_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  AI模块导入失败，仅启用传统模式: {e}")
+    V2_AVAILABLE = False
+
 # 创建FastAPI应用
 app = FastAPI(
     title="MathViz API",
-    description="数学题目可视化API服务",
-    version="1.0.0"
+    description="数学题目可视化API服务 - 支持传统模式(v1)和AI驱动模式(v2)",
+    version="2.0.0"
 )
 
 # 添加CORS中间件
@@ -33,7 +41,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 数据模型
+# 包含v2 AI驱动的路由（如果可用）
+if V2_AVAILABLE:
+    app.include_router(v2_router)
+    print("✅ AI驱动模式 (v2) 已启用")
+else:
+    print("⚠️  仅启用传统模式 (v1)")
+
+# v1传统模式的数据模型
 class ProblemRequest(BaseModel):
     text: str
     problem_type: Optional[str] = "auto"  # "meeting", "chase", "auto"
@@ -232,9 +247,32 @@ async def root():
     """根路径"""
     return {
         "name": "MathViz API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "description": "数学题目可视化API服务",
-        "docs": "/docs"
+        "modes": {
+            "v1": "传统规则模式 - /api/v1/*",
+            "v2": "AI驱动模式 - /api/v2/*" if V2_AVAILABLE else "未启用 (缺少AI依赖)"
+        },
+        "docs": "/docs",
+        "ai_enabled": V2_AVAILABLE
+    }
+
+@app.get("/api/status")
+async def get_system_status():
+    """系统状态检查"""
+    return {
+        "system": "MathViz API Server",
+        "version": "2.0.0",
+        "status": "running",
+        "timestamp": datetime.now().isoformat(),
+        "modes": {
+            "traditional_v1": True,
+            "ai_driven_v2": V2_AVAILABLE
+        },
+        "v1_stats": {
+            "tasks_count": len(tasks),
+            "images_count": len(images)
+        }
     }
 
 if __name__ == "__main__":

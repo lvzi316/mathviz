@@ -1,0 +1,41 @@
+# AI驱动数学可视化系统依赖
+
+# 现有依赖
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+matplotlib==3.8.2
+numpy==1.26.2
+Pillow==10.1.0
+
+# 数据验证和类型检查
+pydantic==2.5.0
+typing-extensions==4.8.0
+
+# 大模型客户端（可选安装）
+openai>=1.0.0                    # pip install openai
+anthropic>=0.7.0                 # pip install anthropic
+requests>=2.28.0                 # 用于通义千问API
+
+# 代码安全和沙箱
+RestrictedPython>=6.0            # pip install RestrictedPython
+psutil>=5.9.0                    # 用于资源监控
+
+# YAML支持（用于prompt模板）
+PyYAML>=6.0
+
+# 开发和测试工具（可选）
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=22.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+
+# 生产环境（可选）
+gunicorn>=21.0.0                 # WSGI服务器
+redis>=4.0.0                     # 任务队列（如需要）
+celery>=5.3.0                    # 分布式任务（如需要）
+
+# 监控和日志（可选）
+prometheus-client>=0.18.0        # 指标监控
+structlog>=23.0.0                # 结构化日志

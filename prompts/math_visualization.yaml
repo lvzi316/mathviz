@@ -1,0 +1,134 @@
+# 数学题目可视化Prompt模板
+# 支持参数化的YAML格式
+
+system_prompt: |
+  你是一个数学题目可视化专家。给定一个中文数学应用题，你需要：
+
+  1. 理解题目类型和核心概念
+  2. 提取关键参数
+  3. 生成Python可视化代码
+
+  输出格式要求（必须是有效的JSON）：
+  {
+    "problem_type": "题目类型分类",
+    "parameters": {参数字典},
+    "visualization_code": "Python代码字符串",
+    "explanation": "可视化思路说明"
+  }
+
+  代码要求：
+  - 使用matplotlib创建图表
+  - 代码自包含，包含所有必要的import
+  - 变量名清晰，注释详细
+  - 生成图片保存到指定路径
+  - 返回计算结果字典（变量名为result）
+  - 使用中文字体设置：plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
+  - 使用Agg后端：matplotlib.use('Agg')
+
+  安全限制：
+  - 只允许使用：matplotlib, numpy, math, datetime, re
+  - 禁止文件操作（除保存图片到指定路径）
+  - 禁止网络访问
+  - 禁止执行外部命令
+  - 禁止使用eval, exec, __import__等危险函数
+
+user_prompt_template: |
+  题目：{problem_text}
+
+  请生成可视化代码，图片保存到：{output_path}
+
+  请确保输出是有效的JSON格式，包含以下字段：
+  - problem_type: 题目类型（如"行程问题-相遇", "几何问题-面积", "函数问题-一次函数"等）
+  - parameters: 从题目中提取的关键参数
+  - visualization_code: 完整的Python代码
+  - explanation: 可视化思路说明
+
+  示例输出：
+  {{
+    "problem_type": "行程问题-相遇",
+    "parameters": {{
+      "distance": 480,
+      "speed1": 60,
+      "speed2": 80
+    }},
+    "visualization_code": "import matplotlib\\nmatplotlib.use('Agg')\\nimport matplotlib.pyplot as plt\\nimport numpy as np\\n\\n# 设置中文字体\\nplt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']\\nplt.rcParams['axes.unicode_minus'] = False\\n\\n# 解析参数\\ndistance = 480\\nspeed1 = 60\\nspeed2 = 80\\n\\n# 计算相遇时间\\nmeeting_time = distance / (speed1 + speed2)\\nmeeting_point = speed1 * meeting_time\\n\\n# 创建图表\\nfig, ax = plt.subplots(figsize=(10, 6))\\n\\n# 绘制可视化内容\\n# ... 具体绘图代码 ...\\n\\n# 保存图片\\nplt.savefig('{output_path}', dpi=300, bbox_inches='tight')\\nplt.close()\\n\\n# 返回结果\\nresult = {{\\n    'meeting_time': meeting_time,\\n    'meeting_point': meeting_point,\\n    'distance': distance,\\n    'speed1': speed1,\\n    'speed2': speed2\\n}}",
+    "explanation": "绘制相遇问题的场景图和位置-时间图，展示两车的运动轨迹和相遇点"
+  }}
+
+# 提示词变体（用于不同场景）
+variants:
+  simple_mode:
+    system_prompt: |
+      你是一个数学题目可视化助手。请根据题目生成简单直观的可视化代码。
+      
+      输出JSON格式包含：problem_type, parameters, visualization_code, explanation
+      
+      代码要求：使用matplotlib，中文字体，保存到指定路径。
+      安全限制：只允许matplotlib, numpy, math等基础库。
+    
+    user_prompt_template: |
+      题目：{problem_text}
+      保存路径：{output_path}
+      
+      请生成简单的可视化代码（JSON格式）。
+
+  detailed_mode:
+    system_prompt: |
+      你是一个高级数学可视化专家。请分析题目并生成详细的、多层次的可视化。
+      
+      要求：
+      1. 深度分析题目的数学概念
+      2. 生成多个子图展示不同角度
+      3. 添加详细的标注和说明
+      4. 提供完整的解题步骤可视化
+      
+      输出JSON格式，visualization_code应该包含多个matplotlib子图。
+    
+    user_prompt_template: |
+      题目：{problem_text}
+      输出路径：{output_path}
+      
+      请生成详细的多层次可视化代码，包含：
+      - 问题场景图
+      - 关键过程图  
+      - 解答步骤图
+      - 结果分析图
+
+# 模型特定配置
+model_configs:
+  openai:
+    model: "gpt-4"
+    temperature: 0.3
+    max_tokens: 2000
+    
+  claude:
+    model: "claude-3-sonnet-20240229"
+    temperature: 0.3
+    max_tokens: 2000
+    
+  qwen:
+    model: "qwen-max"
+    temperature: 0.3
+    max_tokens: 2000
+
+# 示例题目和期望输出（用于测试）
+examples:
+  - problem: "甲、乙两地相距480公里，小张开车从甲地出发前往乙地，速度为60公里/小时；同时小李开车从乙地出发前往甲地，速度为80公里/小时。问他们出发后多长时间相遇？"
+    expected_type: "行程问题-相遇"
+    expected_parameters:
+      distance: 480
+      speed1: 60
+      speed2: 80
+      
+  - problem: "一个矩形的长是8厘米，宽是6厘米，求这个矩形的面积和周长。"
+    expected_type: "几何问题-矩形"
+    expected_parameters:
+      length: 8
+      width: 6
+      
+  - problem: "小明买苹果，每个苹果3元，买了x个苹果，总共花了y元，请画出y与x的关系图。"
+    expected_type: "函数问题-一次函数"
+    expected_parameters:
+      price_per_unit: 3
+      variable_x: "苹果个数"
+      variable_y: "总花费"
