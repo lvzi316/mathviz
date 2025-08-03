@@ -97,12 +97,12 @@ variants:
 # 模型特定配置
 model_configs:
   openai:
-    model: "gpt-4"
+    model: "moonshot-v1-8k"
     temperature: 0.3
     max_tokens: 2000
     
   claude:
-    model: "claude-3-sonnet-20240229"
+    model: "claude-3-5-sonnet-20241022"
     temperature: 0.3
     max_tokens: 2000
     

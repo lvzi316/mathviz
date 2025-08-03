@@ -29,6 +29,7 @@ except ImportError:
 
 from backend.models.schema import LLMProvider, LLMResponse
 from backend.ai_service.prompt_templates import get_prompt_manager, get_model_config_for_provider
+from backend.config import get_config_manager
 
 class BaseLLMClient(ABC):
     """大模型客户端基类"""
@@ -81,12 +82,12 @@ class OpenAIClient(BaseLLMClient):
         
         try:
             response = await self.client.chat.completions.create(
-                model=config.get("model", "gpt-4"),
+                model=config.get("model", "kimi-k2-0711-preview"),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=config.get("temperature", 0.3),
+                temperature=config.get("temperature", 0.6),
                 max_tokens=config.get("max_tokens", 2000),
                 response_format={"type": "json_object"}  # 强制JSON格式
             )
@@ -116,13 +117,18 @@ class OpenAIClient(BaseLLMClient):
 class ClaudeClient(BaseLLMClient):
     """Claude客户端"""
     
-    def __init__(self, api_key: str, **kwargs):
+    def __init__(self, api_key: str, base_url: Optional[str] = None, **kwargs):
         super().__init__(api_key, **kwargs)
         
         if anthropic is None:
             raise ImportError("请安装anthropic库: pip install anthropic")
         
-        self.client = anthropic.AsyncAnthropic(api_key=api_key)
+        # 配置Claude客户端
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+            
+        self.client = anthropic.AsyncAnthropic(**client_kwargs)
     
     async def generate_completion(self, system_prompt: str, user_prompt: str, 
                                 config: Dict[str, Any]) -> LLMResponse:
@@ -131,7 +137,7 @@ class ClaudeClient(BaseLLMClient):
         
         try:
             response = await self.client.messages.create(
-                model=config.get("model", "claude-3-sonnet-20240229"),
+                model=config.get("model", "claude-3-5-sonnet-20241022"),
                 max_tokens=config.get("max_tokens", 2000),
                 temperature=config.get("temperature", 0.3),
                 system=system_prompt,
@@ -292,8 +298,19 @@ class LLMManager:
     
     def __init__(self):
         """初始化LLM管理器"""
-        self.api_keys: Dict[LLMProvider, str] = {}
+        self.config_manager = get_config_manager()
         self.prompt_manager = get_prompt_manager()
+        
+        # 从配置管理器加载API密钥
+        self.api_keys: Dict[LLMProvider, str] = {}
+        self._load_api_keys_from_config()
+    
+    def _load_api_keys_from_config(self):
+        """从配置管理器加载API密钥"""
+        for provider in LLMProvider:
+            api_key = self.config_manager.get_api_key(provider)
+            if api_key:
+                self.api_keys[provider] = api_key
     
     def set_api_key(self, provider: LLMProvider, api_key: str):
         """
@@ -304,6 +321,16 @@ class LLMManager:
             api_key: API密钥
         """
         self.api_keys[provider] = api_key
+        # 同时更新配置管理器
+        self.config_manager.set_api_key(provider, api_key)
+    
+    def get_configured_providers(self) -> list[LLMProvider]:
+        """获取已配置的提供商列表"""
+        return self.config_manager.get_configured_providers()
+    
+    def get_default_provider(self) -> LLMProvider:
+        """获取默认提供商"""
+        return self.config_manager.get_default_provider()
     
     async def generate_visualization_code(self, problem_text: str, output_path: str,
                                         provider: LLMProvider = LLMProvider.OPENAI,
@@ -326,7 +353,7 @@ class LLMManager:
             return LLMResponse(
                 success=False,
                 content="",
-                error_message=f"未设置{provider.value}的API密钥"
+                error_message=f"未配置{provider.value}的API密钥，请在环境变量中设置或通过API配置"
             )
         
         try:
@@ -341,10 +368,18 @@ class LLMManager:
             # 获取模型配置
             model_config = self.prompt_manager.get_model_config(template_name, provider)
             
+            # 获取base URL配置
+            base_url = self.config_manager.get_base_url(provider)
+            
             # 创建客户端
+            client_kwargs = {}
+            if base_url:
+                client_kwargs["base_url"] = base_url
+                
             client = LLMClientFactory.get_or_create_client(
                 provider, 
-                self.api_keys[provider]
+                self.api_keys[provider],
+                **client_kwargs
             )
             
             # 生成completion
@@ -365,7 +400,7 @@ class LLMManager:
     
     def get_available_providers(self) -> list[LLMProvider]:
         """获取已配置的提供商列表"""
-        return list(self.api_keys.keys())
+        return self.get_configured_providers()
     
     async def test_connection(self, provider: LLMProvider) -> bool:
         """

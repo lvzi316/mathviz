@@ -283,6 +283,22 @@
                 </div>
                 
                 <div class="form-group">
+                    <label for="apiVersion">🔧 API版本：</label>
+                    <select id="apiVersion">
+                        <option value="v2">V2 (AI驱动)</option>
+                        <option value="v1">V1 (传统模式)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="llmProvider">🤖 AI模型：</label>
+                    <select id="llmProvider">
+                        <option value="openai">OpenAI (Moonshot)</option>
+                        <option value="claude">Claude (Moonshot)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
                     <label for="problemType">🎯 题目类型：</label>
                     <select id="problemType">
                         <option value="auto">自动检测</option>
@@ -314,10 +330,27 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8002/api/v1';
+        const API_BASE_V1 = 'http://localhost:8002/api';
+        const API_BASE_V2 = 'http://localhost:8002/api/v2';
         
         let currentTaskId = null;
         let statusTimer = null;
+        
+        // 获取当前选择的API版本
+        function getAPIBase() {
+            const version = document.getElementById('apiVersion').value;
+            return version === 'v2' ? API_BASE_V2 : API_BASE_V1;
+        }
+        
+        // 监听API版本变化，显示/隐藏AI模型选择
+        document.getElementById('apiVersion').addEventListener('change', function() {
+            const llmProviderGroup = document.getElementById('llmProvider').parentElement;
+            if (this.value === 'v2') {
+                llmProviderGroup.style.display = 'block';
+            } else {
+                llmProviderGroup.style.display = 'none';
+            }
+        });
         
         // 填充示例题目
         function fillExample(element, type) {
@@ -332,6 +365,8 @@
             
             const text = document.getElementById('problemText').value.trim();
             const problemType = document.getElementById('problemType').value;
+            const apiVersion = document.getElementById('apiVersion').value;
+            const llmProvider = document.getElementById('llmProvider').value;
             
             if (!text) {
                 alert('请输入题目内容');
@@ -342,16 +377,35 @@
             resetUI();
             
             try {
-                const response = await fetch(`${API_BASE}/problems/generate`, {
+                let requestPayload;
+                let endpoint;
+                
+                if (apiVersion === 'v2') {
+                    // V2 API 请求格式
+                    requestPayload = {
+                        text: text,
+                        user_id: 'demo_user',
+                        llm_provider: llmProvider,
+                        processing_mode: 'ai',
+                        prompt_variant: 'default'
+                    };
+                    endpoint = `${getAPIBase()}/problems/generate`;
+                } else {
+                    // V1 API 请求格式
+                    requestPayload = {
+                        text: text,
+                        problem_type: problemType === 'auto' ? null : problemType,
+                        user_id: 'demo_user'
+                    };
+                    endpoint = `${getAPIBase()}/problems/generate`;
+                }
+                
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        text: text,
-                        problem_type: problemType,
-                        user_id: 'demo_user'
-                    })
+                    body: JSON.stringify(requestPayload)
                 });
                 
                 if (!response.ok) {
@@ -399,9 +453,15 @@
         
         // 开始状态轮询
         function startStatusPolling() {
+            const apiVersion = document.getElementById('apiVersion').value;
+            
             statusTimer = setInterval(async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/problems/status/${currentTaskId}`);
+                    const endpoint = apiVersion === 'v2' 
+                        ? `${getAPIBase()}/tasks/${currentTaskId}`
+                        : `${getAPIBase()}/problems/status/${currentTaskId}`;
+                    
+                    const response = await fetch(endpoint);
                     
                     if (!response.ok) {
                         throw new Error('状态查询失败');
@@ -409,27 +469,12 @@
                     
                     const status = await response.json();
                     
-                    switch (status.status) {
-                        case 'pending':
-                            showStatus('pending', '任务等待中...', status.progress);
-                            break;
-                            
-                        case 'processing':
-                            showStatus('processing', '正在生成图表...', status.progress);
-                            break;
-                            
-                        case 'completed':
-                            showStatus('completed', '图表生成完成！', 100);
-                            clearInterval(statusTimer);
-                            await displayResult(status.result);
-                            document.getElementById('submitBtn').disabled = false;
-                            break;
-                            
-                        case 'failed':
-                            showStatus('failed', `生成失败: ${status.error || '未知错误'}`);
-                            clearInterval(statusTimer);
-                            document.getElementById('submitBtn').disabled = false;
-                            break;
+                    if (apiVersion === 'v2') {
+                        // V2 API 状态处理
+                        handleV2Status(status);
+                    } else {
+                        // V1 API 状态处理
+                        handleV1Status(status);
                     }
                     
                 } catch (error) {
@@ -440,21 +485,158 @@
             }, 2000); // 每2秒查询一次
         }
         
-        // 显示结果
-        async function displayResult(result) {
+        // 处理V2 API状态
+        function handleV2Status(status) {
+            switch (status.status) {
+                case 'pending':
+                    showStatus('pending', '任务等待中...', status.progress || 0);
+                    break;
+                    
+                case 'ai_analyzing':
+                    showStatus('processing', '🤖 AI正在分析题目...', status.progress || 10);
+                    break;
+                    
+                case 'code_validating':
+                    showStatus('processing', '🔍 正在验证生成的代码...', status.progress || 40);
+                    break;
+                    
+                case 'executing':
+                    showStatus('processing', '⚡ 正在执行代码生成图表...', status.progress || 70);
+                    break;
+                    
+                case 'completed':
+                    showStatus('completed', '图表生成完成！', 100);
+                    clearInterval(statusTimer);
+                    displayV2Result(status);
+                    document.getElementById('submitBtn').disabled = false;
+                    break;
+                    
+                case 'failed':
+                    showStatus('failed', `生成失败: ${status.error_message || '未知错误'}`);
+                    clearInterval(statusTimer);
+                    document.getElementById('submitBtn').disabled = false;
+                    break;
+            }
+        }
+        
+        // 处理V1 API状态
+        function handleV1Status(status) {
+            switch (status.status) {
+                case 'pending':
+                    showStatus('pending', '任务等待中...', status.progress || 0);
+                    break;
+                    
+                case 'processing':
+                    showStatus('processing', '正在生成图表...', status.progress || 50);
+                    break;
+                    
+                case 'completed':
+                    showStatus('completed', '图表生成完成！', 100);
+                    clearInterval(statusTimer);
+                    displayV1Result(status.result);
+                    document.getElementById('submitBtn').disabled = false;
+                    break;
+                    
+                case 'failed':
+                    showStatus('failed', `生成失败: ${status.error || '未知错误'}`);
+                    clearInterval(statusTimer);
+                    document.getElementById('submitBtn').disabled = false;
+                    break;
+            }
+        }
+        
+        // 显示V2 API结果
+        function displayV2Result(status) {
+            const imageElement = document.getElementById('resultImage');
+            const resultDiv = document.getElementById('result');
+            const analysisContent = document.getElementById('analysisContent');
+            
+            // 设置图片源 - V2 API 直接使用生成的图片路径
+            if (status.execution_result && status.execution_result.image_path) {
+                imageElement.src = status.execution_result.image_path;
+            }
+            
+            // 显示V2分析结果
+            let analysisHTML = '';
+            
+            if (status.ai_analysis) {
+                const analysis = status.ai_analysis;
+                analysisHTML = `
+                    <div class="analysis-item">
+                        <span>API版本：</span>
+                        <span>V2 (AI驱动)</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>题目类型：</span>
+                        <span>${analysis.problem_type || '未识别'}</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>AI置信度：</span>
+                        <span>${(analysis.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>处理时间：</span>
+                        <span>${analysis.processing_time?.toFixed(2)} 秒</span>
+                    </div>
+                `;
+                
+                // 显示提取的参数
+                if (analysis.parameters && Object.keys(analysis.parameters).length > 0) {
+                    analysisHTML += '<div style="margin-top: 10px; font-weight: bold;">提取的参数：</div>';
+                    for (const [key, value] of Object.entries(analysis.parameters)) {
+                        analysisHTML += `
+                            <div class="analysis-item">
+                                <span>${key}：</span>
+                                <span>${value}</span>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            if (status.execution_result) {
+                const exec = status.execution_result;
+                analysisHTML += `
+                    <div style="margin-top: 10px; font-weight: bold;">执行结果：</div>
+                    <div class="analysis-item">
+                        <span>执行成功：</span>
+                        <span>${exec.success ? '是' : '否'}</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>执行时间：</span>
+                        <span>${exec.execution_time?.toFixed(2)} 秒</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span>内存使用：</span>
+                        <span>${exec.memory_usage?.toFixed(1)} MB</span>
+                    </div>
+                `;
+            }
+            
+            analysisContent.innerHTML = analysisHTML;
+            resultDiv.classList.add('show');
+        }
+        
+        // 显示V1 API结果  
+        function displayV1Result(result) {
             const imageElement = document.getElementById('resultImage');
             const resultDiv = document.getElementById('result');
             const analysisContent = document.getElementById('analysisContent');
             
             // 设置图片源
-            imageElement.src = `${API_BASE}/images/${result.image_id}`;
+            imageElement.src = `${API_BASE_V1}/images/${result.image_id}`;
             
             // 显示分析结果
             const analysis = result.problem_analysis;
-            let analysisHTML = '';
+            let analysisHTML = `
+                <div class="analysis-item">
+                    <span>API版本：</span>
+                    <span>V1 (传统模式)</span>
+                </div>
+            `;
             
             if (analysis.type === 'meeting') {
-                analysisHTML = `
+                analysisHTML += `
                     <div class="analysis-item">
                         <span>题目类型：</span>
                         <span>相遇问题</span>
@@ -481,7 +663,7 @@
                     </div>
                 `;
             } else if (analysis.type === 'chase') {
-                analysisHTML = `
+                analysisHTML += `
                     <div class="analysis-item">
                         <span>题目类型：</span>
                         <span>追及问题</span>
@@ -509,9 +691,18 @@
             resultDiv.classList.add('show');
         }
         
-        // 页面加载完成后启用提交按钮
+        // 页面加载完成后启用提交按钮并初始化UI
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('submitBtn').disabled = false;
+            
+            // 初始化LLM提供商显示状态
+            const llmProviderGroup = document.getElementById('llmProvider').parentElement;
+            const apiVersion = document.getElementById('apiVersion').value;
+            if (apiVersion === 'v2') {
+                llmProviderGroup.style.display = 'block';
+            } else {
+                llmProviderGroup.style.display = 'none';
+            }
         });
     </script>
 </body>

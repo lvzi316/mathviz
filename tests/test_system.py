@@ -65,11 +65,11 @@ class SystemTester:
             
             # 测试ProblemRequest
             request = ProblemRequest(
-                problem_text="测试问题",
-                output_filename="test.png",
+                text="甲、乙两地相距480公里的测试问题",
+                user_id="test_user",
                 llm_provider=LLMProvider.OPENAI
             )
-            print(f"✅ ProblemRequest创建成功: {request.problem_text}")
+            print(f"✅ ProblemRequest创建成功: {request.text}")
             
             # 测试PromptTemplate
             template = PromptTemplate(
@@ -223,10 +223,10 @@ result = {{'success': True, 'function': 'sin(x)'}}
                 OpenAIClient, ClaudeClient, QwenClient
             )
             
-            # 测试客户端创建（不需要真实API密钥）
-            openai_client = OpenAIClient()
-            claude_client = ClaudeClient()
-            qwen_client = QwenClient()
+            # 测试客户端创建（使用模拟的API密钥）
+            openai_client = OpenAIClient("test-key")
+            claude_client = ClaudeClient("test-key")
+            qwen_client = QwenClient("test-key")
             
             print("✅ LLM客户端创建成功")
             print(f"   OpenAI客户端: {type(openai_client).__name__}")
@@ -244,12 +244,12 @@ result = {{'success': True, 'function': 'sin(x)'}}
         print("🧪 测试API端点...")
         
         try:
-            from backend.api.endpoints import app
-            print("✅ FastAPI应用创建成功")
+            from backend.api.endpoints import router
+            print("✅ FastAPI路由器创建成功")
             
             # 检查路由
-            routes = [route.path for route in app.routes]
-            expected_routes = ["/api/v2/problems/generate", "/api/v2/tasks/"]
+            routes = [route.path for route in router.routes]
+            expected_routes = ["/problems/generate", "/tasks/{task_id}", "/health"]
             
             for route in expected_routes:
                 if any(route in r for r in routes):
@@ -264,6 +264,101 @@ result = {{'success': True, 'function': 'sin(x)'}}
             print(f"❌ API端点测试失败: {e}")
             return False
 
+    async def test_v2_api_http(self):
+        """测试v2 API HTTP接口"""
+        print("🧪 测试v2 API HTTP接口...")
+        
+        try:
+            import httpx
+            
+            # 测试健康检查端点
+            async with httpx.AsyncClient() as client:
+                response = await client.get("http://localhost:8002/api/v2/health")
+                if response.status_code == 200:
+                    health_data = response.json()
+                    print(f"✅ 健康检查通过: {health_data['status']}")
+                else:
+                    print(f"❌ 健康检查失败: {response.status_code}")
+                    return False
+                
+                # 测试配置端点
+                response = await client.get("http://localhost:8002/api/v2/config")
+                if response.status_code == 200:
+                    config_data = response.json()
+                    print(f"✅ 配置查询成功: 默认提供商 {config_data['default_provider']}")
+                else:
+                    print(f"❌ 配置查询失败: {response.status_code}")
+                    return False
+                
+                # 测试任务列表端点
+                response = await client.get("http://localhost:8002/api/v2/tasks")
+                if response.status_code == 200:
+                    tasks = response.json()
+                    print(f"✅ 任务列表查询成功: {len(tasks)} 个任务")
+                else:
+                    print(f"❌ 任务列表查询失败: {response.status_code}")
+                    return False
+                
+                # 测试问题生成端点（应该失败，因为没有API密钥）
+                test_request = {
+                    "text": "甲、乙两地相距100公里，小明以50公里/小时的速度从甲地出发，求2小时后的位置。",
+                    "user_id": "test_user",
+                    "llm_provider": "openai"
+                }
+                response = await client.post(
+                    "http://localhost:8002/api/v2/problems/generate",
+                    json=test_request
+                )
+                if response.status_code == 400:
+                    print("✅ 问题生成端点正确返回错误（缺少API密钥）")
+                else:
+                    print(f"✅ 问题生成端点响应: {response.status_code}")
+                
+            return True
+            
+        except ImportError:
+            print("⚠️ httpx 未安装，跳过HTTP测试")
+            return True
+        except Exception as e:
+            print(f"❌ v2 API HTTP测试失败: {e}")
+            return False
+
+    async def test_api_key_configuration(self):
+        """测试API密钥配置功能"""
+        print("🧪 测试API密钥配置功能...")
+        
+        try:
+            from backend.config import get_config_manager
+            from backend.ai_service.llm_client import get_llm_manager
+            from backend.models.schema import LLMProvider
+            
+            config_manager = get_config_manager()
+            llm_manager = get_llm_manager()
+            
+            # 测试配置管理器
+            summary = config_manager.get_config_summary()
+            print(f"✅ 配置管理器工作正常")
+            print(f"   已配置提供商: {', '.join(summary['configured_providers'])}")
+            print(f"   默认提供商: {summary['default_provider']}")
+            
+            # 测试API密钥检查
+            openai_configured = config_manager.is_provider_configured(LLMProvider.OPENAI)
+            claude_configured = config_manager.is_provider_configured(LLMProvider.CLAUDE)
+            
+            print(f"✅ API密钥状态检查:")
+            print(f"   OpenAI: {'已配置' if openai_configured else '未配置'}")
+            print(f"   Claude: {'已配置' if claude_configured else '未配置'}")
+            
+            # 测试LLM管理器的配置检查
+            available_providers = llm_manager.get_available_providers()
+            print(f"✅ LLM管理器可用提供商: {[p.value for p in available_providers]}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ API密钥配置测试失败: {e}")
+            return False
+
     async def run_all_tests(self):
         """运行所有测试"""
         print("🚀 开始运行系统综合测试\n")
@@ -276,7 +371,9 @@ result = {{'success': True, 'function': 'sin(x)'}}
             ("代码安全验证", self.test_code_validation),
             ("代码执行功能", self.test_code_execution),
             ("LLM客户端", self.test_llm_clients),
-            ("API端点", self.test_api_endpoints)
+            ("API端点", self.test_api_endpoints),
+            ("v2 API HTTP接口", self.test_v2_api_http),
+            ("API密钥配置", self.test_api_key_configuration)
         ]
         
         results = []

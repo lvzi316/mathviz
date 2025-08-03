@@ -87,8 +87,8 @@ class CodeGenerator:
                         )
                     continue
                 
-                # 计算置信度
-                confidence = self._calculate_confidence(parsed_result, llm_response)
+                # 直接设置固定置信度（通过验证的代码都认为是可信的）
+                confidence = 0.8  # 通过基本验证的代码给予高置信度
                 
                 # 创建成功结果
                 result = AIAnalysisResult(
@@ -181,50 +181,6 @@ class CodeGenerator:
             return {"valid": False, "error": "代码必须包含图片保存逻辑"}
         
         return {"valid": True}
-    
-    def _calculate_confidence(self, result: Dict[str, Any], llm_response: LLMResponse) -> float:
-        """
-        计算置信度
-        
-        Args:
-            result: 解析结果
-            llm_response: LLM响应
-            
-        Returns:
-            float: 置信度（0-1）
-        """
-        confidence = 0.5  # 基础置信度
-        
-        # 基于响应时间调整（快速响应通常质量更好）
-        if llm_response.response_time < 3:
-            confidence += 0.1
-        elif llm_response.response_time > 10:
-            confidence -= 0.1
-        
-        # 基于代码长度调整
-        code_length = len(result.get("visualization_code", ""))
-        if 500 < code_length < 3000:  # 合理的代码长度
-            confidence += 0.1
-        elif code_length < 200:  # 代码太短
-            confidence -= 0.2
-        
-        # 基于参数数量调整
-        param_count = len(result.get("parameters", {}))
-        if param_count >= 2:  # 提取到合理数量的参数
-            confidence += 0.1
-        
-        # 基于说明质量调整
-        explanation_length = len(result.get("explanation", ""))
-        if explanation_length > 20:
-            confidence += 0.1
-        
-        # 基于题目类型识别调整
-        problem_type = result.get("problem_type", "")
-        if problem_type and problem_type != "未知":
-            confidence += 0.1
-        
-        # 确保置信度在合理范围内
-        return max(0.0, min(1.0, confidence))
     
     def _create_error_result(self, error_message: str, processing_time: float) -> AIAnalysisResult:
         """

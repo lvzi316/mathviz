@@ -19,6 +19,7 @@ from backend.models.schema import (
 )
 from backend.ai_service import get_code_generator, get_llm_manager
 from backend.execution import get_sandbox_manager
+from backend.config import get_config_manager
 
 # 创建路由器
 router = APIRouter(prefix="/api/v2", tags=["AI Math Visualization"])
@@ -43,11 +44,19 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
         request: 请求参数
     """
     try:
+        print(f"🚀 [TASK-{task_id}] 开始处理AI可视化任务")
+        print(f"📝 [TASK-{task_id}] 题目内容: {request.text}")
+        print(f"🔧 [TASK-{task_id}] LLM提供商: {request.llm_provider}")
+        print(f"📋 [TASK-{task_id}] 模板变体: {request.prompt_variant}")
+        
         # 更新任务状态：开始AI分析
         update_task_status(task_id, TaskStatus.AI_ANALYZING, 10)
+        print(f"📊 [TASK-{task_id}] 状态更新: AI_ANALYZING (10%)")
         
         # 1. 调用AI生成代码
+        print(f"🤖 [TASK-{task_id}] 开始调用LLM生成代码...")
         code_generator = get_code_generator()
+        
         ai_result = await code_generator.generate_visualization_code(
             problem_text=request.text,
             output_path=f"output/{task_id}.png",
@@ -55,16 +64,29 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
             template_variant=request.prompt_variant
         )
         
-        # 检查AI生成是否成功
-        if ai_result.confidence < 0.1:  # 置信度太低
-            update_task_status(task_id, TaskStatus.FAILED, 0, 
-                             error="AI分析失败：生成的代码质量不符合要求")
+        print(f"✅ [TASK-{task_id}] LLM代码生成完成!")
+        print(f"📈 [TASK-{task_id}] 置信度: {ai_result.confidence:.2f}")
+        print(f"⏱️  [TASK-{task_id}] 处理时间: {ai_result.processing_time:.2f}秒")
+        print(f"🏷️  [TASK-{task_id}] 题目类型: {ai_result.problem_type}")
+        print(f"📐 [TASK-{task_id}] 参数: {ai_result.parameters}")
+        print(f"💬 [TASK-{task_id}] 说明: {ai_result.explanation[:100]}...")
+        print(f"📝 [TASK-{task_id}] 代码长度: {len(ai_result.visualization_code)} 字符")
+        
+        # 检查AI生成是否成功（降低置信度阈值）
+        if ai_result.confidence < 0.1:  # 只有极低置信度才认为失败
+            error_msg = f"AI分析失败：生成的代码质量不符合要求 (置信度: {ai_result.confidence:.2f})"
+            print(f"❌ [TASK-{task_id}] {error_msg}")
+            update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
             return
         
         # 更新任务状态：代码验证中
         update_task_status(task_id, TaskStatus.CODE_VALIDATING, 40, ai_analysis=ai_result)
+        print(f"📊 [TASK-{task_id}] 状态更新: CODE_VALIDATING (40%)")
         
         # 2. 在沙箱中执行代码
+        print(f"🏃 [TASK-{task_id}] 开始在沙箱中执行代码...")
+        print(f"🔒 [TASK-{task_id}] 执行模式: {config_storage['default_execution_mode']}")
+        
         sandbox_manager = get_sandbox_manager()
         sandbox_result = sandbox_manager.execute_code_safely(
             code=ai_result.visualization_code,
@@ -73,9 +95,14 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
             timeout=30
         )
         
+        print(f"🏁 [TASK-{task_id}] 沙箱执行完成!")
+        print(f"📊 [TASK-{task_id}] 执行结果: {sandbox_result.get('overall_success', False)}")
+        
         if not sandbox_result["overall_success"]:
-            update_task_status(task_id, TaskStatus.FAILED, 0,
-                             error=f"代码执行失败: {sandbox_result['error_message']}")
+            error_msg = f"代码执行失败: {sandbox_result['error_message']}"
+            print(f"❌ [TASK-{task_id}] {error_msg}")
+            print(f"🔍 [TASK-{task_id}] 详细错误信息: {sandbox_result}")
+            update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
             return
         
         # 更新任务状态：完成
@@ -83,8 +110,18 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
         update_task_status(task_id, TaskStatus.COMPLETED, 100, 
                          ai_analysis=ai_result, execution_result=execution_result)
         
+        print(f"🎉 [TASK-{task_id}] 任务完成!")
+        print(f"🖼️  [TASK-{task_id}] 图片路径: {execution_result.image_path}")
+        print(f"⏱️  [TASK-{task_id}] 执行时间: {execution_result.execution_time:.2f}秒")
+        
     except Exception as e:
-        update_task_status(task_id, TaskStatus.FAILED, 0, error=f"任务处理异常: {str(e)}")
+        error_msg = f"任务处理异常: {str(e)}"
+        print(f"💥 [TASK-{task_id}] {error_msg}")
+        print(f"🔍 [TASK-{task_id}] 异常详情: {type(e).__name__}: {e}")
+        import traceback
+        print(f"📚 [TASK-{task_id}] 堆栈跟踪:")
+        traceback.print_exc()
+        update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
 
 def update_task_status(task_id: str, status: TaskStatus, progress: int,
                       ai_analysis: Optional[AIAnalysisResult] = None,
@@ -257,7 +294,9 @@ async def set_api_key(provider: LLMProvider, api_key: str):
         provider: 模型提供商
         api_key: API密钥
     """
-    config_storage["api_keys"][provider] = api_key
+    # 更新配置管理器
+    config_manager = get_config_manager()
+    config_manager.set_api_key(provider, api_key)
     
     # 更新LLM管理器
     llm_manager = get_llm_manager()
@@ -265,14 +304,33 @@ async def set_api_key(provider: LLMProvider, api_key: str):
     
     return {"message": f"{provider.value}的API密钥已设置"}
 
+@router.post("/config/base-url")
+async def set_base_url(provider: LLMProvider, base_url: str):
+    """
+    设置Base URL
+    
+    Args:
+        provider: 模型提供商
+        base_url: Base URL
+    """
+    # 更新配置管理器
+    config_manager = get_config_manager()
+    config_manager.set_base_url(provider, base_url)
+    
+    return {"message": f"{provider.value}的Base URL已设置为: {base_url}"}
+
 @router.get("/config")
 async def get_config():
     """获取当前配置"""
+    config_manager = get_config_manager()
+    llm_manager = get_llm_manager()
+    
     return {
-        "configured_providers": list(config_storage["api_keys"].keys()),
-        "default_provider": config_storage["default_provider"],
+        "configured_providers": [p.value for p in config_manager.get_configured_providers()],
+        "default_provider": config_manager.get_default_provider().value,
         "default_execution_mode": config_storage["default_execution_mode"],
-        "max_concurrent_tasks": config_storage["max_concurrent_tasks"]
+        "max_concurrent_tasks": config_storage["max_concurrent_tasks"],
+        "config_summary": config_manager.get_config_summary()
     }
 
 @router.post("/config")
@@ -282,8 +340,10 @@ async def update_config(
     max_concurrent_tasks: Optional[int] = None
 ):
     """更新配置"""
+    config_manager = get_config_manager()
+    
     if default_provider:
-        config_storage["default_provider"] = default_provider
+        config_manager.default_provider = default_provider
     if default_execution_mode:
         config_storage["default_execution_mode"] = default_execution_mode
     if max_concurrent_tasks:

@@ -82,7 +82,15 @@ class RestrictedExecutor:
                 'abs': abs, 'round': round, 'pow': pow, 'divmod': divmod,
                 'bool': bool, 'complex': complex,
                 'print': self._safe_print,
+                '__import__': self._safe_import,  # 添加受限的import功能
             }
+        }
+        
+        # 允许的模块列表
+        self.allowed_modules = {
+            'matplotlib', 'matplotlib.pyplot', 'matplotlib.patches',
+            'numpy', 'math', 'statistics', 'json',
+            'time', 'datetime', 'random'
         }
         
         self.output_buffer = []
@@ -92,6 +100,27 @@ class RestrictedExecutor:
         """安全的print函数"""
         output = ' '.join(str(arg) for arg in args)
         self.output_buffer.append(output)
+    
+    def _safe_import(self, name, globals=None, locals=None, fromlist=(), level=0):
+        """
+        受限的import函数
+        
+        Args:
+            name: 模块名
+            globals: 全局命名空间
+            locals: 局部命名空间
+            fromlist: from import列表
+            level: 相对导入级别
+        
+        Returns:
+            导入的模块
+        """
+        # 检查模块是否在允许列表中
+        if name not in self.allowed_modules and not any(name.startswith(allowed + '.') for allowed in self.allowed_modules):
+            raise ImportError(f"导入模块 '{name}' 被禁止")
+        
+        # 执行实际导入
+        return __import__(name, globals, locals, fromlist, level)
     
     def execute_code(self, code: str, output_path: str, timeout: int = 30) -> ExecutionResult:
         """

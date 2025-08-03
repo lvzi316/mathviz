@@ -357,3 +357,4 @@ test_image.png
 *.bak
 *.backup
 *.old
+*.png
