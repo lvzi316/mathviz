@@ -7,6 +7,7 @@ FastAPI后端实现 - 支持传统模式(v1)和AI驱动模式(v2)
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -47,6 +48,11 @@ if V2_AVAILABLE:
     print("✅ AI驱动模式 (v2) 已启用")
 else:
     print("⚠️  仅启用传统模式 (v1)")
+
+# 挂载静态文件服务（用于图片）
+if not os.path.exists("output"):
+    os.makedirs("output")
+app.mount("/static", StaticFiles(directory="output"), name="static")
 
 # v1传统模式的数据模型
 class ProblemRequest(BaseModel):
@@ -274,6 +280,28 @@ async def get_system_status():
             "images_count": len(images)
         }
     }
+
+@app.get("/api/v2/images/{image_filename}")
+async def get_v2_image(image_filename: str):
+    """获取V2 API生成的图片"""
+    
+    # 确保文件名安全，防止路径遍历攻击
+    if ".." in image_filename or "/" in image_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    file_path = os.path.join("output", image_filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+    
+    return FileResponse(
+        file_path,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "Content-Disposition": f"inline; filename={image_filename}"
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn

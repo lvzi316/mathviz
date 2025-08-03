@@ -330,7 +330,7 @@
     </div>
 
     <script>
-        const API_BASE_V1 = 'http://localhost:8002/api';
+        const API_BASE_V1 = 'http://localhost:8002/api/v1';
         const API_BASE_V2 = 'http://localhost:8002/api/v2';
         
         let currentTaskId = null;
@@ -551,9 +551,12 @@
             const resultDiv = document.getElementById('result');
             const analysisContent = document.getElementById('analysisContent');
             
-            // 设置图片源 - V2 API 直接使用生成的图片路径
+            // 设置图片源 - V2 API 使用API端点获取图片
             if (status.execution_result && status.execution_result.image_path) {
-                imageElement.src = status.execution_result.image_path;
+                // 从路径中提取文件名，例如 "output/abc123.png" -> "abc123.png"
+                const imagePath = status.execution_result.image_path;
+                const filename = imagePath.split('/').pop(); // 获取文件名部分
+                imageElement.src = `${API_BASE_V2}/images/${filename}`;
             }
             
             // 显示V2分析结果
