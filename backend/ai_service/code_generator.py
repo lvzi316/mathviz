@@ -8,10 +8,11 @@ AI代码生成器
 import json
 import time
 import uuid
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from backend.models.schema import (
-    LLMProvider, AIAnalysisResult, LLMResponse
+    LLMProvider, AIAnalysisResult, LLMResponse, LLMInteraction
 )
 from backend.ai_service.llm_client import get_llm_manager
 
@@ -97,7 +98,16 @@ class CodeGenerator:
                     visualization_code=parsed_result.get("visualization_code", ""),
                     explanation=parsed_result.get("explanation", ""),
                     confidence=confidence,
-                    processing_time=time.time() - start_time
+                    processing_time=time.time() - start_time,
+                    llm_interaction=LLMInteraction(
+                        system_prompt=llm_response.system_prompt or "",
+                        user_prompt=llm_response.user_prompt or "",
+                        full_prompt=llm_response.full_prompt or "",
+                        response_content=llm_response.content,
+                        usage_stats=llm_response.usage_stats or {},
+                        response_time=llm_response.response_time,
+                        timestamp=datetime.now().isoformat()
+                    ) if llm_response.system_prompt else None
                 )
                 
                 # 记录生成历史

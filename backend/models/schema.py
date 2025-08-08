@@ -49,14 +49,27 @@ class ProblemRequest(BaseModel):
         }
     }
 
+class LLMInteraction(BaseModel):
+    """LLM交互记录"""
+    system_prompt: str = Field(..., description="系统提示词")
+    user_prompt: str = Field(..., description="用户提示词")
+    full_prompt: str = Field(..., description="完整的发送给LLM的提示词")
+    response_content: str = Field(..., description="LLM返回的原始内容")
+    usage_stats: Optional[Dict[str, Any]] = Field(None, description="token使用统计")
+    response_time: float = Field(..., description="响应时间（秒）")
+    timestamp: str = Field(..., description="交互时间戳")
+
 class AIAnalysisResult(BaseModel):
     """AI分析结果"""
     problem_type: str = Field(..., description="题目类型")
-    parameters: Dict[str, Any] = Field(..., description="提取的参数")
-    visualization_code: str = Field(..., description="可视化代码")
-    explanation: str = Field(..., description="可视化思路说明")
-    confidence: float = Field(0.0, ge=0.0, le=1.0, description="AI分析的置信度")
-    processing_time: float = Field(0.0, description="处理时间（秒）")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="提取的参数")
+    visualization_code: str = Field(..., description="生成的可视化代码")
+    explanation: str = Field(..., description="分析说明")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="置信度")
+    processing_time: float = Field(..., description="处理时间（秒）")
+    
+    # 新增字段：LLM交互记录
+    llm_interaction: Optional[LLMInteraction] = Field(None, description="LLM交互记录")
     
     model_config = {
         "json_schema_extra": {
@@ -119,6 +132,9 @@ class TaskInfo(BaseModel):
     ai_analysis: Optional[AIAnalysisResult] = Field(None, description="AI分析结果")
     execution_result: Optional[ExecutionResult] = Field(None, description="执行结果")
     error_message: Optional[str] = Field(None, description="错误信息")
+    
+    # LLM交互记录
+    llm_interaction: Optional[LLMInteraction] = Field(None, description="LLM交互记录")
     
     model_config = {
         "json_schema_extra": {
@@ -185,6 +201,11 @@ class LLMResponse(BaseModel):
     usage_stats: Dict[str, Any] = Field(default_factory=dict, description="使用统计")
     response_time: float = Field(0.0, description="响应时间（秒）")
     error_message: Optional[str] = Field(None, description="错误信息")
+    
+    # 新增字段：记录完整的交互信息
+    system_prompt: Optional[str] = Field(None, description="系统提示词")
+    user_prompt: Optional[str] = Field(None, description="用户提示词") 
+    full_prompt: Optional[str] = Field(None, description="完整的发送给LLM的提示词")
     
     model_config = {
         "json_schema_extra": {

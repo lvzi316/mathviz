@@ -54,6 +54,26 @@ if not os.path.exists("output"):
     os.makedirs("output")
 app.mount("/static", StaticFiles(directory="output"), name="static")
 
+# 挂载前端静态文件
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+
+# 添加根目录文件服务（用于JSON文件等）
+from fastapi import Request
+from fastapi.responses import FileResponse, HTMLResponse
+
+@app.get("/")
+async def serve_index():
+    """提供前端主页"""
+    return FileResponse("frontend/index.html")
+
+@app.get("/math_test_case.json")
+async def serve_test_cases():
+    """提供测试用例JSON文件"""
+    if os.path.exists("math_test_case.json"):
+        return FileResponse("math_test_case.json")
+    else:
+        raise HTTPException(status_code=404, detail="测试用例文件未找到")
+
 # v1传统模式的数据模型
 class ProblemRequest(BaseModel):
     text: str
@@ -246,21 +266,6 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "tasks_count": len(tasks),
         "images_count": len(images)
-    }
-
-@app.get("/")
-async def root():
-    """根路径"""
-    return {
-        "name": "MathViz API",
-        "version": "2.0.0",
-        "description": "数学题目可视化API服务",
-        "modes": {
-            "v1": "传统规则模式 - /api/v1/*",
-            "v2": "AI驱动模式 - /api/v2/*" if V2_AVAILABLE else "未启用 (缺少AI依赖)"
-        },
-        "docs": "/docs",
-        "ai_enabled": V2_AVAILABLE
     }
 
 @app.get("/api/status")

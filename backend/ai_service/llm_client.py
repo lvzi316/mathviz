@@ -81,15 +81,17 @@ class OpenAIClient(BaseLLMClient):
         start_time = time.time()
         
         try:
+            # 构建完整的prompt信息
+            full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
+            
             response = await self.client.chat.completions.create(
                 model=config.get("model", "kimi-k2-0711-preview"),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=config.get("temperature", 0.6),
-                max_tokens=config.get("max_tokens", 2000),
-                response_format={"type": "json_object"}  # 强制JSON格式
+                temperature=config.get("temperature", 0.3),
+                max_tokens=config.get("max_tokens", 2000)
             )
             
             response_time = time.time() - start_time
@@ -102,7 +104,10 @@ class OpenAIClient(BaseLLMClient):
                     "completion_tokens": response.usage.completion_tokens,
                     "total_tokens": response.usage.total_tokens
                 },
-                response_time=response_time
+                response_time=response_time,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                full_prompt=full_prompt
             )
             
         except Exception as e:
@@ -111,7 +116,10 @@ class OpenAIClient(BaseLLMClient):
                 success=False,
                 content="",
                 response_time=response_time,
-                error_message=str(e)
+                error_message=str(e),
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                full_prompt=f"System: {system_prompt}\n\nUser: {user_prompt}"
             )
 
 class ClaudeClient(BaseLLMClient):
@@ -136,6 +144,9 @@ class ClaudeClient(BaseLLMClient):
         start_time = time.time()
         
         try:
+            # 构建完整的prompt信息
+            full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
+            
             response = await self.client.messages.create(
                 model=config.get("model", "claude-3-5-sonnet-20241022"),
                 max_tokens=config.get("max_tokens", 2000),
@@ -156,7 +167,10 @@ class ClaudeClient(BaseLLMClient):
                     "output_tokens": response.usage.output_tokens,
                     "total_tokens": response.usage.input_tokens + response.usage.output_tokens
                 },
-                response_time=response_time
+                response_time=response_time,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                full_prompt=full_prompt
             )
             
         except Exception as e:
@@ -165,7 +179,10 @@ class ClaudeClient(BaseLLMClient):
                 success=False,
                 content="",
                 response_time=response_time,
-                error_message=str(e)
+                error_message=str(e),
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                full_prompt=f"System: {system_prompt}\n\nUser: {user_prompt}"
             )
 
 class QwenClient(BaseLLMClient):
@@ -185,6 +202,9 @@ class QwenClient(BaseLLMClient):
         start_time = time.time()
         
         try:
+            # 构建完整的prompt信息
+            full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
+            
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
@@ -229,14 +249,20 @@ class QwenClient(BaseLLMClient):
                         "output_tokens": result["usage"]["output_tokens"],
                         "total_tokens": result["usage"]["total_tokens"]
                     },
-                    response_time=response_time
+                    response_time=response_time,
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    full_prompt=full_prompt
                 )
             else:
                 return LLMResponse(
                     success=False,
                     content="",
                     response_time=response_time,
-                    error_message=f"API调用失败: {response.status_code} - {response.text}"
+                    error_message=f"API调用失败: {response.status_code} - {response.text}",
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    full_prompt=full_prompt
                 )
                 
         except Exception as e:
@@ -245,7 +271,10 @@ class QwenClient(BaseLLMClient):
                 success=False,
                 content="",
                 response_time=response_time,
-                error_message=str(e)
+                error_message=str(e),
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                full_prompt=f"System: {system_prompt}\n\nUser: {user_prompt}"
             )
 
 class LLMClientFactory:

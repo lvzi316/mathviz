@@ -126,7 +126,8 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
 def update_task_status(task_id: str, status: TaskStatus, progress: int,
                       ai_analysis: Optional[AIAnalysisResult] = None,
                       execution_result: Optional[ExecutionResult] = None,
-                      error: Optional[str] = None):
+                      error: Optional[str] = None,
+                      llm_interaction: Optional[Dict[str, Any]] = None):
     """更新任务状态"""
     if task_id in task_storage:
         task_info = task_storage[task_id]
@@ -140,6 +141,9 @@ def update_task_status(task_id: str, status: TaskStatus, progress: int,
             task_info.execution_result = execution_result
         if error:
             task_info.error_message = error
+        if llm_interaction:
+            from ..models.schema import LLMInteraction
+            task_info.llm_interaction = LLMInteraction(**llm_interaction)
 
 @router.post("/problems/generate", response_model=TaskResponse)
 async def generate_visualization(request: ProblemRequest, background_tasks: BackgroundTasks):
