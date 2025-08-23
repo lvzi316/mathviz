@@ -2,7 +2,8 @@
 # 支持参数化的YAML格式
 
 system_prompt: |
-  你是一个数学题目可视化专家。给定一个中文数学应用题，你需要：
+  你是一个帮助中学生学习数学的AI assistant。你通过为输入的题目生成能够帮助学生理解题目场景的示意图来启发思考。
+  给定一个中文数学应用题，你需要：
 
   1. 理解题目类型和核心概念
   2. 提取关键参数
@@ -15,7 +16,11 @@ system_prompt: |
     "visualization_code": "Python代码字符串",
     "explanation": "可视化思路说明"
   }
-
+  示意图要求：
+  - 使用同题目类型相适应的图类型，例如，对于函数问题生成坐标系图；对于行程问题，生成路程图；对于几何问题，生成相应的几何形状；
+  - 图中需要标注出题目中的关键参数，例如：正方形的边长、走过的路程和所用时间。
+  - 不要在图中标出答案
+  
   代码要求：
   - 使用matplotlib创建图表
   - 代码自包含，包含所有必要的import
@@ -43,17 +48,17 @@ user_prompt_template: |
   - visualization_code: 完整的Python代码
   - explanation: 可视化思路说明
 
-  示例输出：
-  {{
-    "problem_type": "行程问题-相遇",
-    "parameters": {{
-      "distance": 480,
-      "speed1": 60,
-      "speed2": 80
-    }},
-    "visualization_code": "import matplotlib\\nmatplotlib.use('Agg')\\nimport matplotlib.pyplot as plt\\nimport numpy as np\\n\\n# 设置中文字体\\nplt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']\\nplt.rcParams['axes.unicode_minus'] = False\\n\\n# 解析参数\\ndistance = 480\\nspeed1 = 60\\nspeed2 = 80\\n\\n# 计算相遇时间\\nmeeting_time = distance / (speed1 + speed2)\\nmeeting_point = speed1 * meeting_time\\n\\n# 创建图表\\nfig, ax = plt.subplots(figsize=(10, 6))\\n\\n# 绘制可视化内容\\n# ... 具体绘图代码 ...\\n\\n# 保存图片\\nplt.savefig('{output_path}', dpi=300, bbox_inches='tight')\\nplt.close()\\n\\n# 返回结果\\nresult = {{\\n    'meeting_time': meeting_time,\\n    'meeting_point': meeting_point,\\n    'distance': distance,\\n    'speed1': speed1,\\n    'speed2': speed2\\n}}",
-    "explanation": "绘制相遇问题的场景图和位置-时间图，展示两车的运动轨迹和相遇点"
-  }}
+  # 示例输出：
+  # {{
+  #   "problem_type": "行程问题-相遇",
+  #   "parameters": {{
+  #     "distance": 480,
+  #     "speed1": 60,
+  #     "speed2": 80
+  #   }},
+  #   "visualization_code": "import matplotlib\\nmatplotlib.use('Agg')\\nimport matplotlib.pyplot as plt\\nimport numpy as np\\n\\n# 设置中文字体\\nplt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']\\nplt.rcParams['axes.unicode_minus'] = False\\n\\n# 解析参数\\ndistance = 480\\nspeed1 = 60\\nspeed2 = 80\\n\\n# 计算相遇时间\\nmeeting_time = distance / (speed1 + speed2)\\nmeeting_point = speed1 * meeting_time\\n\\n# 创建图表\\nfig, ax = plt.subplots(figsize=(10, 6))\\n\\n# 绘制可视化内容\\n# ... 具体绘图代码 ...\\n\\n# 保存图片\\nplt.savefig('{output_path}', dpi=300, bbox_inches='tight')\\nplt.close()\\n\\n# 返回结果\\nresult = {{\\n    'meeting_time': meeting_time,\\n    'meeting_point': meeting_point,\\n    'distance': distance,\\n    'speed1': speed1,\\n    'speed2': speed2\\n}}",
+  #   "explanation": "绘制相遇问题的场景图和位置-时间图，展示两车的运动轨迹和相遇点"
+  # }}
 
 # 提示词变体（用于不同场景）
 variants:
