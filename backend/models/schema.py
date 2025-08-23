@@ -13,6 +13,7 @@ class LLMProvider(str, Enum):
     OPENAI = "openai"
     CLAUDE = "claude"
     QWEN = "qwen"
+    DEEPSEEK = "deepseek"
     GEMINI = "gemini"
 
 class ProcessingMode(str, Enum):

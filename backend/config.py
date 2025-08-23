@@ -23,13 +23,17 @@ class ConfigManager:
             LLMProvider.OPENAI: os.getenv("OPENAI_API_KEY"),
             LLMProvider.CLAUDE: os.getenv("CLAUDE_API_KEY"),
             LLMProvider.QWEN: os.getenv("QWEN_API_KEY"),
+            LLMProvider.DEEPSEEK: os.getenv("DEEPSEEK_API_KEY"),
+            LLMProvider.GEMINI: os.getenv("GEMINI_API_KEY"),
         }
         
         # Base URL配置
         self.base_urls: Dict[LLMProvider, Optional[str]] = {
             LLMProvider.OPENAI: os.getenv("OPENAI_BASE_URL"),
             LLMProvider.CLAUDE: os.getenv("CLAUDE_BASE_URL"),
-            LLMProvider.QWEN: os.getenv("QWEN_BASE_URL"),
+            LLMProvider.QWEN: os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/api/v1"),
+            LLMProvider.DEEPSEEK: os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
+            LLMProvider.GEMINI: os.getenv("GEMINI_BASE_URL"),
         }
         
         # 默认提供商

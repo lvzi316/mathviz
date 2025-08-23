@@ -1,281 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-大模型客户端
-支持多个主流LLM提供商
+大模型客户端管理器
+使用新的模块化客户端架构
 """
 
-import json
 import time
-import asyncio
-from typing import Dict, Any, Optional
-from abc import ABC, abstractmethod
-
-# 导入各个模型的客户端库
-try:
-    import openai
-except ImportError:
-    openai = None
-
-try:
-    import anthropic
-except ImportError:
-    anthropic = None
-
-try:
-    import requests
-except ImportError:
-    requests = None
+from typing import Dict, Any, Optional, List
 
 from backend.models.schema import LLMProvider, LLMResponse
-from backend.ai_service.prompt_templates import get_prompt_manager, get_model_config_for_provider
+from backend.ai_service.prompt_templates import get_prompt_manager
 from backend.config import get_config_manager
 
-class BaseLLMClient(ABC):
-    """大模型客户端基类"""
-    
-    def __init__(self, api_key: str, **kwargs):
-        """
-        初始化客户端
-        
-        Args:
-            api_key: API密钥
-            **kwargs: 其他配置参数
-        """
-        self.api_key = api_key
-        self.extra_config = kwargs
-    
-    @abstractmethod
-    async def generate_completion(self, system_prompt: str, user_prompt: str, 
-                                config: Dict[str, Any]) -> LLMResponse:
-        """
-        生成completion
-        
-        Args:
-            system_prompt: 系统提示词
-            user_prompt: 用户提示词
-            config: 模型配置
-            
-        Returns:
-            LLMResponse: 响应结果
-        """
-        pass
-
-class OpenAIClient(BaseLLMClient):
-    """OpenAI客户端"""
-    
-    def __init__(self, api_key: str, base_url: Optional[str] = None, **kwargs):
-        super().__init__(api_key, **kwargs)
-        
-        if openai is None:
-            raise ImportError("请安装openai库: pip install openai")
-        
-        self.client = openai.AsyncOpenAI(
-            api_key=api_key,
-            base_url=base_url
-        )
-    
-    async def generate_completion(self, system_prompt: str, user_prompt: str, 
-                                config: Dict[str, Any]) -> LLMResponse:
-        """生成OpenAI completion"""
-        start_time = time.time()
-        
-        try:
-            # 构建完整的prompt信息
-            full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
-            
-            response = await self.client.chat.completions.create(
-                model=config.get("model", "kimi-k2-0711-preview"),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=config.get("temperature", 0.3),
-                max_tokens=config.get("max_tokens", 2000)
-            )
-            
-            response_time = time.time() - start_time
-            
-            return LLMResponse(
-                success=True,
-                content=response.choices[0].message.content,
-                usage_stats={
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
-                },
-                response_time=response_time,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                full_prompt=full_prompt
-            )
-            
-        except Exception as e:
-            response_time = time.time() - start_time
-            return LLMResponse(
-                success=False,
-                content="",
-                response_time=response_time,
-                error_message=str(e),
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                full_prompt=f"System: {system_prompt}\n\nUser: {user_prompt}"
-            )
-
-class ClaudeClient(BaseLLMClient):
-    """Claude客户端"""
-    
-    def __init__(self, api_key: str, base_url: Optional[str] = None, **kwargs):
-        super().__init__(api_key, **kwargs)
-        
-        if anthropic is None:
-            raise ImportError("请安装anthropic库: pip install anthropic")
-        
-        # 配置Claude客户端
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
-            
-        self.client = anthropic.AsyncAnthropic(**client_kwargs)
-    
-    async def generate_completion(self, system_prompt: str, user_prompt: str, 
-                                config: Dict[str, Any]) -> LLMResponse:
-        """生成Claude completion"""
-        start_time = time.time()
-        
-        try:
-            # 构建完整的prompt信息
-            full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
-            
-            response = await self.client.messages.create(
-                model=config.get("model", "claude-3-5-sonnet-20241022"),
-                max_tokens=config.get("max_tokens", 2000),
-                temperature=config.get("temperature", 0.3),
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": user_prompt}
-                ]
-            )
-            
-            response_time = time.time() - start_time
-            
-            return LLMResponse(
-                success=True,
-                content=response.content[0].text,
-                usage_stats={
-                    "input_tokens": response.usage.input_tokens,
-                    "output_tokens": response.usage.output_tokens,
-                    "total_tokens": response.usage.input_tokens + response.usage.output_tokens
-                },
-                response_time=response_time,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                full_prompt=full_prompt
-            )
-            
-        except Exception as e:
-            response_time = time.time() - start_time
-            return LLMResponse(
-                success=False,
-                content="",
-                response_time=response_time,
-                error_message=str(e),
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                full_prompt=f"System: {system_prompt}\n\nUser: {user_prompt}"
-            )
-
-class QwenClient(BaseLLMClient):
-    """通义千问客户端"""
-    
-    def __init__(self, api_key: str, base_url: str = "https://dashscope.aliyuncs.com/api/v1", **kwargs):
-        super().__init__(api_key, **kwargs)
-        
-        if requests is None:
-            raise ImportError("请安装requests库: pip install requests")
-        
-        self.base_url = base_url
-    
-    async def generate_completion(self, system_prompt: str, user_prompt: str, 
-                                config: Dict[str, Any]) -> LLMResponse:
-        """生成通义千问completion"""
-        start_time = time.time()
-        
-        try:
-            # 构建完整的prompt信息
-            full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
-            
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-            
-            data = {
-                "model": config.get("model", "qwen-max"),
-                "input": {
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                },
-                "parameters": {
-                    "temperature": config.get("temperature", 0.3),
-                    "max_tokens": config.get("max_tokens", 2000),
-                    "result_format": "json_object"
-                }
-            }
-            
-            # 使用asyncio运行同步请求
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None, 
-                lambda: requests.post(
-                    f"{self.base_url}/services/aigc/text-generation/generation",
-                    headers=headers,
-                    json=data,
-                    timeout=60
-                )
-            )
-            
-            response_time = time.time() - start_time
-            
-            if response.status_code == 200:
-                result = response.json()
-                return LLMResponse(
-                    success=True,
-                    content=result["output"]["text"],
-                    usage_stats={
-                        "input_tokens": result["usage"]["input_tokens"],
-                        "output_tokens": result["usage"]["output_tokens"],
-                        "total_tokens": result["usage"]["total_tokens"]
-                    },
-                    response_time=response_time,
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    full_prompt=full_prompt
-                )
-            else:
-                return LLMResponse(
-                    success=False,
-                    content="",
-                    response_time=response_time,
-                    error_message=f"API调用失败: {response.status_code} - {response.text}",
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    full_prompt=full_prompt
-                )
-                
-        except Exception as e:
-            response_time = time.time() - start_time
-            return LLMResponse(
-                success=False,
-                content="",
-                response_time=response_time,
-                error_message=str(e),
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                full_prompt=f"System: {system_prompt}\n\nUser: {user_prompt}"
-            )
+# 导入所有客户端
+from backend.ai_service.clients.base_client import BaseLLMClient
+from backend.ai_service.clients.openai_client import OpenAIClient
+from backend.ai_service.clients.claude_client import ClaudeClient
+from backend.ai_service.clients.qwen_client import QwenClient
+from backend.ai_service.clients.deepseek_client import DeepSeekClient
 
 class LLMClientFactory:
     """LLM客户端工厂"""
@@ -283,47 +25,70 @@ class LLMClientFactory:
     _clients: Dict[LLMProvider, BaseLLMClient] = {}
     
     @classmethod
-    def create_client(cls, provider: LLMProvider, api_key: str, **kwargs) -> BaseLLMClient:
+    def create_client(cls, provider: LLMProvider, api_key: str, base_url: Optional[str] = None, **kwargs) -> BaseLLMClient:
         """
         创建LLM客户端
         
         Args:
             provider: 提供商
             api_key: API密钥
+            base_url: API基础URL
             **kwargs: 其他配置
             
         Returns:
             BaseLLMClient: 客户端实例
         """
         if provider == LLMProvider.OPENAI:
-            return OpenAIClient(api_key, **kwargs)
+            return OpenAIClient(api_key=api_key, base_url=base_url, **kwargs)
         elif provider == LLMProvider.CLAUDE:
-            return ClaudeClient(api_key, **kwargs)
+            return ClaudeClient(api_key=api_key, base_url=base_url, **kwargs)
         elif provider == LLMProvider.QWEN:
-            return QwenClient(api_key, **kwargs)
+            return QwenClient(api_key=api_key, base_url=base_url, **kwargs)
+        elif provider == LLMProvider.DEEPSEEK:
+            return DeepSeekClient(api_key=api_key, base_url=base_url, **kwargs)
         else:
             raise ValueError(f"不支持的提供商: {provider}")
     
     @classmethod
-    def get_or_create_client(cls, provider: LLMProvider, api_key: str, **kwargs) -> BaseLLMClient:
+    def get_or_create_client(cls, provider: LLMProvider, api_key: str, 
+                           base_url: Optional[str] = None, **kwargs) -> BaseLLMClient:
         """
         获取或创建客户端（带缓存）
         
         Args:
             provider: 提供商
             api_key: API密钥
+            base_url: API基础URL
             **kwargs: 其他配置
             
         Returns:
             BaseLLMClient: 客户端实例
         """
-        if provider not in cls._clients:
-            cls._clients[provider] = cls.create_client(provider, api_key, **kwargs)
+        # 创建缓存key，包含provider和关键配置
+        cache_key = f"{provider.value}_{hash((api_key, base_url))}"
         
-        return cls._clients[provider]
+        if cache_key not in cls._clients:
+            cls._clients[cache_key] = cls.create_client(provider, api_key, base_url, **kwargs)
+        
+        return cls._clients[cache_key]
+    
+    @classmethod
+    def clear_cache(cls):
+        """清除客户端缓存"""
+        cls._clients.clear()
+    
+    @classmethod
+    def get_supported_providers(cls) -> List[LLMProvider]:
+        """获取支持的提供商列表"""
+        return [
+            LLMProvider.OPENAI,
+            LLMProvider.CLAUDE,
+            LLMProvider.QWEN,
+            LLMProvider.DEEPSEEK
+        ]
 
 class LLMManager:
-    """LLM管理器"""
+    """LLM管理器 - 统一管理所有LLM客户端"""
     
     def __init__(self):
         """初始化LLM管理器"""
@@ -352,8 +117,10 @@ class LLMManager:
         self.api_keys[provider] = api_key
         # 同时更新配置管理器
         self.config_manager.set_api_key(provider, api_key)
+        # 清除缓存，强制重新创建客户端
+        LLMClientFactory.clear_cache()
     
-    def get_configured_providers(self) -> list[LLMProvider]:
+    def get_configured_providers(self) -> List[LLMProvider]:
         """获取已配置的提供商列表"""
         return self.config_manager.get_configured_providers()
     
@@ -361,8 +128,43 @@ class LLMManager:
         """获取默认提供商"""
         return self.config_manager.get_default_provider()
     
+    def get_available_providers(self) -> List[LLMProvider]:
+        """获取可用的提供商列表（包括支持但未配置的）"""
+        return LLMClientFactory.get_supported_providers()
+    
+    async def test_connection(self, provider: LLMProvider) -> bool:
+        """
+        测试提供商连接
+        
+        Args:
+            provider: 提供商
+            
+        Returns:
+            bool: 连接是否成功
+        """
+        if provider not in self.api_keys:
+            return False
+        
+        try:
+            # 获取base URL配置
+            base_url = self.config_manager.get_base_url(provider)
+            
+            # 创建客户端
+            client = LLMClientFactory.get_or_create_client(
+                provider=provider, 
+                api_key=self.api_keys[provider],
+                base_url=base_url
+            )
+            
+            # 使用客户端的测试连接方法
+            return await client.test_connection()
+            
+        except Exception as e:
+            print(f"测试连接失败 - {provider.value}: {str(e)}")
+            return False
+    
     async def generate_visualization_code(self, problem_text: str, output_path: str,
-                                        provider: LLMProvider = LLMProvider.OPENAI,
+                                        provider: Optional[LLMProvider] = None,
                                         template_name: str = "math_visualization",
                                         variant: str = "default") -> LLMResponse:
         """
@@ -371,18 +173,26 @@ class LLMManager:
         Args:
             problem_text: 题目文本
             output_path: 输出路径
-            provider: 模型提供商
+            provider: 模型提供商（如果不指定则使用默认）
             template_name: 模板名称
             variant: 模板变体
             
         Returns:
             LLMResponse: 生成结果
         """
+        # 确定使用的提供商
+        if provider is None:
+            provider = self.get_default_provider()
+        
+        # 检查API密钥
         if provider not in self.api_keys:
             return LLMResponse(
                 success=False,
                 content="",
-                error_message=f"未配置{provider.value}的API密钥，请在环境变量中设置或通过API配置"
+                error_message=f"未配置{provider.value}的API密钥，请在环境变量中设置或通过API配置",
+                system_prompt="",
+                user_prompt="",
+                full_prompt=""
             )
         
         try:
@@ -401,14 +211,10 @@ class LLMManager:
             base_url = self.config_manager.get_base_url(provider)
             
             # 创建客户端
-            client_kwargs = {}
-            if base_url:
-                client_kwargs["base_url"] = base_url
-                
             client = LLMClientFactory.get_or_create_client(
-                provider, 
-                self.api_keys[provider],
-                **client_kwargs
+                provider=provider, 
+                api_key=self.api_keys[provider],
+                base_url=base_url
             )
             
             # 生成completion
@@ -424,35 +230,66 @@ class LLMManager:
             return LLMResponse(
                 success=False,
                 content="",
-                error_message=f"生成失败: {str(e)}"
+                error_message=f"生成失败: {str(e)}",
+                system_prompt="",
+                user_prompt="",
+                full_prompt=""
             )
     
-    def get_available_providers(self) -> list[LLMProvider]:
-        """获取已配置的提供商列表"""
-        return self.get_configured_providers()
-    
-    async def test_connection(self, provider: LLMProvider) -> bool:
+    def get_provider_info(self, provider: LLMProvider) -> Dict[str, Any]:
         """
-        测试连接
+        获取提供商信息
         
         Args:
             provider: 提供商
             
         Returns:
-            bool: 连接是否成功
+            Dict[str, Any]: 提供商信息
         """
         try:
-            response = await self.generate_visualization_code(
-                problem_text="测试题目：1+1=?",
-                output_path="test.png",
-                provider=provider,
-                variant="simple_mode"
-            )
-            return response.success
-        except Exception:
-            return False
+            # 获取base URL配置
+            base_url = self.config_manager.get_base_url(provider)
+            
+            # 创建临时客户端以获取支持的模型
+            if provider in self.api_keys:
+                client = LLMClientFactory.create_client(
+                    provider=provider,
+                    api_key=self.api_keys[provider],
+                    base_url=base_url
+                )
+                
+                supported_models = client.get_supported_models()
+                default_model = client.get_default_model()
+            else:
+                supported_models = []
+                default_model = "未配置"
+            
+            return {
+                "provider": provider.value,
+                "configured": provider in self.api_keys,
+                "base_url": base_url,
+                "default_model": default_model,
+                "supported_models": supported_models
+            }
+            
+        except Exception as e:
+            return {
+                "provider": provider.value,
+                "configured": provider in self.api_keys,
+                "base_url": base_url,
+                "default_model": "获取失败",
+                "supported_models": [],
+                "error": str(e)
+            }
+    
+    def get_all_providers_info(self) -> List[Dict[str, Any]]:
+        """获取所有提供商信息"""
+        return [
+            self.get_provider_info(provider) 
+            for provider in self.get_available_providers()
+        ]
 
-# 全局LLM管理器
+# 全局LLM管理器实例
 llm_manager = LLMManager()
 
 def get_llm_manager() -> LLMManager:
@@ -466,20 +303,36 @@ if __name__ == "__main__":
     async def test():
         manager = get_llm_manager()
         
-        # 设置API密钥（请替换为实际密钥）
-        manager.set_api_key(LLMProvider.OPENAI, "your-openai-api-key")
+        print("可用提供商:", [p.value for p in manager.get_available_providers()])
+        print("已配置提供商:", [p.value for p in manager.get_configured_providers()])
         
-        # 测试生成
-        response = await manager.generate_visualization_code(
-            problem_text="甲、乙两地相距480公里，两车相向而行，速度分别为60和80公里/小时，求相遇时间。",
-            output_path="output/test.png"
-        )
+        # 获取所有提供商信息
+        providers_info = manager.get_all_providers_info()
+        for info in providers_info:
+            print(f"\n{info['provider']}:")
+            print(f"  已配置: {info['configured']}")
+            print(f"  默认模型: {info['default_model']}")
+            print(f"  支持的模型: {info['supported_models'][:3]}...")  # 只显示前3个
         
-        print(f"成功: {response.success}")
-        if response.success:
-            print(f"内容: {response.content[:200]}...")
-            print(f"用量: {response.usage_stats}")
+        # 如果有配置的提供商，测试生成
+        configured = manager.get_configured_providers()
+        if configured:
+            provider = configured[0]
+            print(f"\n使用 {provider.value} 测试生成...")
+            
+            response = await manager.generate_visualization_code(
+                problem_text="甲、乙两地相距480公里，两车相向而行，速度分别为60和80公里/小时，求相遇时间。",
+                output_path="output/test.png",
+                provider=provider
+            )
+            
+            print(f"成功: {response.success}")
+            if response.success:
+                print(f"内容: {response.content[:200]}...")
+                print(f"用量: {response.usage_stats}")
+            else:
+                print(f"错误: {response.error_message}")
         else:
-            print(f"错误: {response.error_message}")
+            print("\n没有配置的提供商，请设置API密钥")
     
     asyncio.run(test())

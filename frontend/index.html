@@ -293,6 +293,43 @@
             margin-bottom: 0;
         }
         
+        .llm-config-info {
+            background: #e8f4fd;
+            border: 1px solid #3498db;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .llm-config-info h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            padding: 3px 0;
+            font-size: 13px;
+        }
+        
+        .config-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .config-item span:first-child {
+            font-weight: 500;
+            color: #34495e;
+        }
+        
+        .config-item span:last-child {
+            color: #2980b9;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        
         .examples {
             background: #f8f9fa;
             padding: 20px;
@@ -380,9 +417,28 @@
                     <div class="form-group">
                         <label for="llmProvider">🤖 AI模型：</label>
                         <select id="llmProvider">
-                            <option value="openai">OpenAI (Moonshot)</option>
-                            <option value="claude">Claude (Moonshot)</option>
+                            <option value="openai">OpenAI / Moonshot</option>
+                            <option value="claude">Claude</option>
+                            <option value="qwen">通义千问 (Qwen)</option>
+                            <option value="deepseek">DeepSeek</option>
                         </select>
+                    </div>
+                    
+                    <!-- LLM配置信息显示区域 -->
+                    <div id="llmConfigInfo" class="llm-config-info" style="display: none;">
+                        <h4>📋 当前模型配置</h4>
+                        <div class="config-item">
+                            <span>提供商：</span>
+                            <span id="currentProvider">-</span>
+                        </div>
+                        <div class="config-item">
+                            <span>Base URL：</span>
+                            <span id="currentBaseUrl">-</span>
+                        </div>
+                        <div class="config-item">
+                            <span>使用的模型：</span>
+                            <span id="currentModel">-</span>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -436,6 +492,30 @@
     <script>
         const API_BASE_V1 = 'http://localhost:8000/api/v1';
         const API_BASE_V2 = 'http://localhost:8000/api/v2';
+        
+        // LLM提供商配置映射
+        const LLM_PROVIDER_CONFIG = {
+            'openai': {
+                name: 'OpenAI / Moonshot',
+                baseUrl: 'https://api.moonshot.cn/v1',
+                defaultModel: 'kimi-k2-0711-preview'
+            },
+            'claude': {
+                name: 'Claude (Moonshot兼容)',
+                baseUrl: 'https://api.moonshot.cn/anthropic',
+                defaultModel: 'kimi-k2-0711-preview'
+            },
+            'qwen': {
+                name: '通义千问 (Qwen)',
+                baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                defaultModel: 'qwen3-coder-plus'
+            },
+            'deepseek': {
+                name: 'DeepSeek',
+                baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                defaultModel: 'deepseek-v3.1'
+            }
+        };
         
         let currentTaskId = null;
         let statusTimer = null;
@@ -521,12 +601,37 @@
                 } else {
                     llmProviderGroup.style.display = 'none';
                 }
+                updateLLMConfigInfo(); // 更新配置信息显示
+            });
+            
+            // LLM提供商变化监听
+            document.getElementById('llmProvider').addEventListener('change', function() {
+                updateLLMConfigInfo(); // 更新配置信息显示
             });
             
             // 表单提交
             document.getElementById('problemForm').addEventListener('submit', handleFormSubmit);
             
             console.log('事件监听器初始化完成');
+        }
+        
+        // 更新LLM配置信息显示
+        function updateLLMConfigInfo() {
+            const apiVersion = document.getElementById('apiVersion').value;
+            const llmProvider = document.getElementById('llmProvider').value;
+            const configInfoDiv = document.getElementById('llmConfigInfo');
+            
+            if (apiVersion === 'v2' && llmProvider && LLM_PROVIDER_CONFIG[llmProvider]) {
+                const config = LLM_PROVIDER_CONFIG[llmProvider];
+                
+                document.getElementById('currentProvider').textContent = config.name;
+                document.getElementById('currentBaseUrl').textContent = config.baseUrl;
+                document.getElementById('currentModel').textContent = config.defaultModel;
+                
+                configInfoDiv.style.display = 'block';
+            } else {
+                configInfoDiv.style.display = 'none';
+            }
         }
         
         // 更新LLM交互显示
@@ -612,6 +717,9 @@
                 const result = await response.json();
                 currentTaskId = result.task_id;
                 
+                // 记录任务开始时间
+                window.taskStartTime = Date.now();
+                
                 // 显示初始响应
                 updateLLMInteraction('response', `任务创建成功:\n${JSON.stringify(result, null, 2)}`);
                 
@@ -633,6 +741,9 @@
             document.getElementById('result').classList.remove('show');
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('progressFill').style.width = '0%';
+            
+            // 重置时间跟踪
+            window.taskStartTime = null;
             
             if (statusTimer) {
                 clearInterval(statusTimer);
@@ -688,8 +799,11 @@
         
         // 处理V2 API状态
         function handleV2Status(status) {
+            // 计算已消耗时间
+            const elapsedTime = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
+            
             // 更新LLM交互信息
-            let statusUpdate = `状态更新 (${new Date().toLocaleTimeString()}):\n${JSON.stringify(status, null, 2)}`;
+            let statusUpdate = `状态更新 (${new Date().toLocaleTimeString()}) - 已用时: ${elapsedTime}s:\n${JSON.stringify(status, null, 2)}`;
             
             // 如果有AI分析结果，显示详细信息
             if (status.ai_analysis) {
@@ -699,7 +813,22 @@
                 if (status.ai_analysis.llm_interaction) {
                     const interaction = status.ai_analysis.llm_interaction;
                     updateLLMInteraction('prompt', interaction.full_prompt || interaction.system_prompt + '\n\n' + interaction.user_prompt);
-                    updateLLMInteraction('response', `LLM响应:\n${interaction.response_content}\n\n使用统计:\n${JSON.stringify(interaction.usage_stats, null, 2)}\n\n响应时间: ${interaction.response_time.toFixed(2)}秒`);
+                    
+                    let responseText = `LLM响应:\n${interaction.response_content}\n\n使用统计:\n${JSON.stringify(interaction.usage_stats, null, 2)}\n\n响应时间: ${interaction.response_time.toFixed(2)}秒`;
+                    
+                    // 如果交互记录中包含模型信息，更新配置显示
+                    if (interaction.model_used) {
+                        document.getElementById('currentModel').textContent = interaction.model_used;
+                        responseText += `\n\n实际使用模型: ${interaction.model_used}`;
+                    }
+                    
+                    // 如果交互记录中包含base_url信息，更新配置显示  
+                    if (interaction.base_url) {
+                        document.getElementById('currentBaseUrl').textContent = interaction.base_url;
+                        responseText += `\n\n实际Base URL: ${interaction.base_url}`;
+                    }
+                    
+                    updateLLMInteraction('response', responseText);
                 }
             }
             
@@ -711,19 +840,23 @@
                     break;
                     
                 case 'ai_analyzing':
-                    showStatus('processing', '🤖 AI正在分析题目...', status.progress || 10);
+                    const elapsedTime = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
+                    showStatus('processing', `🤖 AI正在分析题目... (已用时: ${elapsedTime}s)`, status.progress || 10);
                     break;
                     
                 case 'code_validating':
-                    showStatus('processing', '🔍 正在验证生成的代码...', status.progress || 40);
+                    const elapsedTime2 = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
+                    showStatus('processing', `🔍 正在验证生成的代码... (已用时: ${elapsedTime2}s)`, status.progress || 40);
                     break;
                     
                 case 'executing':
-                    showStatus('processing', '⚡ 正在执行代码生成图表...', status.progress || 70);
+                    const elapsedTime3 = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
+                    showStatus('processing', `⚡ 正在执行代码生成图表... (已用时: ${elapsedTime3}s)`, status.progress || 70);
                     break;
                     
                 case 'completed':
-                    showStatus('completed', '图表生成完成！', 100);
+                    const totalTime = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
+                    showStatus('completed', `图表生成完成！(总用时: ${totalTime}s)`, 100);
                     clearInterval(statusTimer);
                     displayV2Result(status);
                     document.getElementById('submitBtn').disabled = false;
@@ -791,6 +924,10 @@
                         <span>V2 (AI驱动)</span>
                     </div>
                     <div class="analysis-item">
+                        <span>LLM提供商：</span>
+                        <span>${analysis.llm_provider || document.getElementById('llmProvider').value}</span>
+                    </div>
+                    <div class="analysis-item">
                         <span>题目类型：</span>
                         <span>${analysis.problem_type || '未识别'}</span>
                     </div>
@@ -803,6 +940,49 @@
                         <span>${analysis.processing_time?.toFixed(2)} 秒</span>
                     </div>
                 `;
+                
+                // 显示LLM交互详细信息
+                if (analysis.llm_interaction) {
+                    const interaction = analysis.llm_interaction;
+                    analysisHTML += '<div style="margin-top: 10px; font-weight: bold;">LLM交互信息：</div>';
+                    
+                    if (interaction.model_used) {
+                        analysisHTML += `
+                            <div class="analysis-item">
+                                <span>使用模型：</span>
+                                <span>${interaction.model_used}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (interaction.base_url) {
+                        analysisHTML += `
+                            <div class="analysis-item">
+                                <span>API端点：</span>
+                                <span style="font-size: 11px;">${interaction.base_url}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (interaction.usage_stats) {
+                        const usage = interaction.usage_stats;
+                        analysisHTML += `
+                            <div class="analysis-item">
+                                <span>Token使用：</span>
+                                <span>${usage.total_tokens || 0} (${usage.input_tokens || usage.prompt_tokens || 0}+${usage.output_tokens || usage.completion_tokens || 0})</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (interaction.response_time) {
+                        analysisHTML += `
+                            <div class="analysis-item">
+                                <span>响应时间：</span>
+                                <span>${interaction.response_time.toFixed(2)} 秒</span>
+                            </div>
+                        `;
+                    }
+                }
                 
                 // 显示提取的参数
                 if (analysis.parameters && Object.keys(analysis.parameters).length > 0) {

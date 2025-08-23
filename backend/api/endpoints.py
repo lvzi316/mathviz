@@ -57,25 +57,55 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
         print(f"🤖 [TASK-{task_id}] 开始调用LLM生成代码...")
         code_generator = get_code_generator()
         
-        ai_result = await code_generator.generate_visualization_code(
-            problem_text=request.text,
-            output_path=f"output/{task_id}.png",
-            provider=request.llm_provider,
-            template_variant=request.prompt_variant
-        )
+        try:
+            ai_result = await code_generator.generate_visualization_code(
+                problem_text=request.text,
+                output_path=f"output/{task_id}.png",
+                provider=request.llm_provider,
+                template_variant=request.prompt_variant
+            )
+            
+            print(f"✅ [TASK-{task_id}] LLM代码生成完成!")
+            print(f"📈 [TASK-{task_id}] 置信度: {ai_result.confidence:.2f}")
+            print(f"⏱️  [TASK-{task_id}] 处理时间: {ai_result.processing_time:.2f}秒")
+            print(f"🏷️  [TASK-{task_id}] 题目类型: {ai_result.problem_type}")
+            print(f"📐 [TASK-{task_id}] 参数: {ai_result.parameters}")
+            print(f"💬 [TASK-{task_id}] 说明: {ai_result.explanation[:100]}...")
+            print(f"📝 [TASK-{task_id}] 代码长度: {len(ai_result.visualization_code)} 字符")
+            
+            # 添加详细的LLM交互调试信息
+            if hasattr(ai_result, 'llm_interaction') and ai_result.llm_interaction:
+                llm_interaction = ai_result.llm_interaction
+                print(f"🔍 [TASK-{task_id}] LLM交互详情:")
+                print(f"   响应时间: {llm_interaction.response_time:.2f}秒")
+                print(f"   系统提示词长度: {len(llm_interaction.system_prompt)} 字符")
+                print(f"   用户提示词长度: {len(llm_interaction.user_prompt)} 字符")
+                print(f"   LLM响应长度: {len(llm_interaction.response_content)} 字符")
+                print(f"   LLM响应前100字符: {llm_interaction.response_content[:100]}...")
+                if llm_interaction.usage_stats:
+                    print(f"   Token使用: {llm_interaction.usage_stats}")
+        except Exception as llm_error:
+            error_msg = f"LLM调用异常: {str(llm_error)}"
+            print(f"💥 [TASK-{task_id}] {error_msg}")
+            print(f"🔍 [TASK-{task_id}] 异常类型: {type(llm_error).__name__}")
+            import traceback
+            traceback.print_exc()
+            update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
+            return
         
-        print(f"✅ [TASK-{task_id}] LLM代码生成完成!")
-        print(f"📈 [TASK-{task_id}] 置信度: {ai_result.confidence:.2f}")
-        print(f"⏱️  [TASK-{task_id}] 处理时间: {ai_result.processing_time:.2f}秒")
-        print(f"🏷️  [TASK-{task_id}] 题目类型: {ai_result.problem_type}")
-        print(f"📐 [TASK-{task_id}] 参数: {ai_result.parameters}")
-        print(f"💬 [TASK-{task_id}] 说明: {ai_result.explanation[:100]}...")
-        print(f"📝 [TASK-{task_id}] 代码长度: {len(ai_result.visualization_code)} 字符")
-        
-        # 检查AI生成是否成功（降低置信度阈值）
-        if ai_result.confidence < 0.1:  # 只有极低置信度才认为失败
+        # 检查AI生成是否成功（临时降低置信度阈值用于调试）
+        print(f"🔍 [TASK-{task_id}] 检查置信度: {ai_result.confidence} (阈值: 0.05)")
+        if ai_result.confidence < 0.05:  # 临时降低阈值用于调试
             error_msg = f"AI分析失败：生成的代码质量不符合要求 (置信度: {ai_result.confidence:.2f})"
             print(f"❌ [TASK-{task_id}] {error_msg}")
+            
+            # 调试信息：即使失败也显示生成的内容
+            print(f"🔍 [TASK-{task_id}] 调试 - 失败的生成结果:")
+            print(f"   题目类型: {ai_result.problem_type}")
+            print(f"   参数: {ai_result.parameters}")
+            print(f"   说明: {ai_result.explanation}")
+            print(f"   代码前200字符: {ai_result.visualization_code[:200]}...")
+            
             update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
             return
         
@@ -157,85 +187,106 @@ async def generate_visualization(request: ProblemRequest, background_tasks: Back
     Returns:
         TaskResponse: 任务响应
     """
-    # 检查并发任务数量
-    active_tasks = sum(1 for task in task_storage.values() 
-                      if task.status in [TaskStatus.PENDING, TaskStatus.AI_ANALYZING, 
-                                       TaskStatus.CODE_VALIDATING, TaskStatus.EXECUTING])
-    
-    if active_tasks >= config_storage["max_concurrent_tasks"]:
-        raise HTTPException(status_code=429, detail="服务器繁忙，请稍后重试")
-    
-    # 创建任务
-    task_id = str(uuid.uuid4())
-    task_info = TaskInfo(
-        task_id=task_id,
-        status=TaskStatus.PENDING,
-        progress=0,
-        created_at=datetime.now().isoformat(),
-        updated_at=datetime.now().isoformat(),
-        processing_mode=request.processing_mode,
-        llm_provider=request.llm_provider if request.processing_mode == ProcessingMode.AI else None
-    )
-    
-    task_storage[task_id] = task_info
-    
-    # 添加后台任务
-    if request.processing_mode == ProcessingMode.AI:
-        # 检查API密钥
-        llm_manager = get_llm_manager()
-        if request.llm_provider not in llm_manager.get_available_providers():
-            raise HTTPException(status_code=400, detail=f"未配置{request.llm_provider.value}的API密钥")
+    try:
+        print(f"🔍 [API] 收到请求: {request}")
         
-        background_tasks.add_task(process_ai_visualization_task, task_id, request)
-        estimated_time = 15
-    else:
-        # 传统模式处理（兼容旧接口）
-        from text_to_visual import MathProblemVisualizer
+        # 检查并发任务数量
+        active_tasks = sum(1 for task in task_storage.values() 
+                          if task.status in [TaskStatus.PENDING, TaskStatus.AI_ANALYZING, 
+                                           TaskStatus.CODE_VALIDATING, TaskStatus.EXECUTING])
         
-        async def process_traditional_task():
-            try:
-                update_task_status(task_id, TaskStatus.EXECUTING, 50)
-                
-                visualizer = MathProblemVisualizer()
-                if "相遇" in request.text:
-                    img_path, result = visualizer.create_meeting_visualization(
-                        request.text, f"output/{task_id}.png"
-                    )
-                elif "追及" in request.text:
-                    img_path, result = visualizer.create_chase_visualization(
-                        request.text, f"output/{task_id}.png"
-                    )
-                else:
-                    # 默认使用相遇问题处理
-                    img_path, result = visualizer.create_meeting_visualization(
-                        request.text, f"output/{task_id}.png"
-                    )
-                
-                execution_result = ExecutionResult(
-                    success=True,
-                    image_path=img_path,
-                    result_data=result,
-                    execution_time=2.0,
-                    memory_usage=50.0,
-                    output_logs="传统模式处理完成"
-                )
-                
-                update_task_status(task_id, TaskStatus.COMPLETED, 100, 
-                                 execution_result=execution_result)
-                
-            except Exception as e:
-                update_task_status(task_id, TaskStatus.FAILED, 0, 
-                                 error=f"传统模式处理失败: {str(e)}")
+        if active_tasks >= config_storage["max_concurrent_tasks"]:
+            print(f"❌ [API] 任务数超限: {active_tasks}/{config_storage['max_concurrent_tasks']}")
+            raise HTTPException(status_code=429, detail="服务器繁忙，请稍后重试")
         
-        background_tasks.add_task(process_traditional_task)
-        estimated_time = 5
-    
-    return TaskResponse(
-        task_id=task_id,
-        status=TaskStatus.PENDING,
-        message="任务已创建，正在处理中...",
-        estimated_time=estimated_time
-    )
+        # 创建任务
+        task_id = str(uuid.uuid4())
+        task_info = TaskInfo(
+            task_id=task_id,
+            status=TaskStatus.PENDING,
+            progress=0,
+            created_at=datetime.now().isoformat(),
+            updated_at=datetime.now().isoformat(),
+            processing_mode=request.processing_mode,
+            llm_provider=request.llm_provider if request.processing_mode == ProcessingMode.AI else None
+        )
+        
+        task_storage[task_id] = task_info
+        print(f"✅ [API] 创建任务: {task_id}, 模式: {request.processing_mode}")
+        
+        # 添加后台任务
+        if request.processing_mode == ProcessingMode.AI:
+            # 检查API密钥
+            print(f"🔑 [API] 检查API密钥配置, 提供商: {request.llm_provider}")
+            llm_manager = get_llm_manager()
+            available_providers = llm_manager.get_available_providers()
+            print(f"🔍 [API] 可用提供商: {available_providers}")
+            
+            if request.llm_provider not in available_providers:
+                error_msg = f"未配置{request.llm_provider.value}的API密钥"
+                print(f"❌ [API] {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            background_tasks.add_task(process_ai_visualization_task, task_id, request)
+            estimated_time = 15
+        else:
+            # 传统模式处理（兼容旧接口）
+            from text_to_visual import MathProblemVisualizer
+            
+            async def process_traditional_task():
+                try:
+                    update_task_status(task_id, TaskStatus.EXECUTING, 50)
+                    
+                    visualizer = MathProblemVisualizer()
+                    if "相遇" in request.text:
+                        img_path, result = visualizer.create_meeting_visualization(
+                            request.text, f"output/{task_id}.png"
+                        )
+                    elif "追及" in request.text:
+                        img_path, result = visualizer.create_chase_visualization(
+                            request.text, f"output/{task_id}.png"
+                        )
+                    else:
+                        # 默认使用相遇问题处理
+                        img_path, result = visualizer.create_meeting_visualization(
+                            request.text, f"output/{task_id}.png"
+                        )
+                    
+                    execution_result = ExecutionResult(
+                        success=True,
+                        image_path=img_path,
+                        result_data=result,
+                        execution_time=2.0,
+                        memory_usage=50.0,
+                        output_logs="传统模式处理完成"
+                    )
+                    
+                    update_task_status(task_id, TaskStatus.COMPLETED, 100, 
+                                     execution_result=execution_result)
+                    
+                except Exception as e:
+                    update_task_status(task_id, TaskStatus.FAILED, 0, 
+                                     error=f"传统模式处理失败: {str(e)}")
+            
+            background_tasks.add_task(process_traditional_task)
+            estimated_time = 5
+        
+        print(f"✅ [API] 任务创建成功: {task_id}")
+        return TaskResponse(
+            task_id=task_id,
+            status=TaskStatus.PENDING,
+            message="任务已创建，正在处理中...",
+            estimated_time=estimated_time
+        )
+        
+    except HTTPException as e:
+        print(f"❌ [API] HTTP异常: {e.status_code} - {e.detail}")
+        raise
+    except Exception as e:
+        print(f"💥 [API] 未预期异常: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 @router.get("/tasks/{task_id}", response_model=TaskInfo)
 async def get_task_status(task_id: str):
