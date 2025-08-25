@@ -3,377 +3,294 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MathViz - 数学题目可视化</title>
+    <title>数学可视化生成器 - 多模型并行处理</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-        
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
-        .header {
+        h1 {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             text-align: center;
-            padding: 40px 20px;
-        }
-        
-        .header h1 {
-            margin: 0 0 10px 0;
-            font-size: 2.5em;
-            font-weight: 300;
-        }
-        
-        .header p {
+            padding: 30px;
             margin: 0;
-            font-size: 1.2em;
-            opacity: 0.9;
+            font-size: 28px;
+            font-weight: 700;
         }
 
-        .main {
+        .main-container {
             display: flex;
+            flex-direction: column;
             gap: 20px;
             padding: 20px;
         }
 
-        .left-panel {
-            flex: 1;
-            min-width: 500px;
+        .input-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
         }
 
-        .right-panel {
-            flex: 1;
-            border-left: 2px solid #e9ecef;
-            padding-left: 20px;
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            min-height: 600px;
         }
 
-        .section-title {
-            color: #2c3e50;
+        .model-result-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .model-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .model-name {
             font-weight: 600;
-            font-size: 18px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 8px;
+            font-size: 16px;
+            color: #2c3e50;
         }
 
-        .llm-interaction {
-            margin-bottom: 25px;
+        .model-status {
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
         }
 
-        .prompt-section, .response-section {
-            margin-bottom: 20px;
+        .status-waiting {
+            background-color: #f8f9fa;
+            color: #6c757d;
         }
 
-        .prompt-content, .response-content {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
+        .status-processing {
+            background-color: #fff3cd;
+            color: #856404;
+            animation: pulse 2s infinite;
+        }
+
+        .status-completed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .model-progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #e9ecef;
+            border-radius: 2px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .model-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .model-result-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .model-image-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            min-height: 200px;
+            border: 2px dashed #dee2e6;
+        }
+
+        .model-image {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .model-analysis {
+            background-color: #f8f9fa;
             border-radius: 8px;
             padding: 15px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            max-height: 300px;
-            overflow-y: auto;
-            min-height: 60px;
+            border-left: 4px solid #3498db;
         }
 
-        .prompt-content {
-            background: #e8f4fd;
-            border-color: #3498db;
-        }
-
-        .response-content {
-            background: #e8f5e8;
-            border-color: #27ae60;
-        }
-
-        .test-case-controls {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border: 1px solid #e1e1e1;
-        }
-
-        .test-case-controls h4 {
+        .model-analysis h4 {
             margin: 0 0 10px 0;
             color: #2c3e50;
-        }
-
-        #load-test-case {
-            margin-left: 10px;
-            padding: 5px 15px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
             font-size: 14px;
+            font-weight: 600;
         }
 
-        #load-test-case:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
+        .model-analysis-content {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #495057;
+            max-height: 120px;
+            overflow-y: auto;
         }
 
-        #load-test-case:hover:not(:disabled) {
-            background: #2980b9;
-        }        .form-group {
-            margin-bottom: 25px;
+        .model-timing {
+            font-size: 12px;
+            color: #6c757d;
+            text-align: right;
+            margin-top: 5px;
         }
-        
-        label {
+
+        .image-placeholder {
+            color: #6c757d;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 120px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
             color: #2c3e50;
+            font-size: 14px;
         }
-        
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            padding: 15px;
-            border: 2px solid #e1e1e1;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: inherit;
-            resize: vertical;
-            transition: border-color 0.3s;
-        }
-        
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        select {
+
+        .select, .textarea {
             width: 100%;
             padding: 12px;
-            border: 2px solid #e1e1e1;
+            border: 2px solid #e1e5e9;
             border-radius: 8px;
-            font-size: 16px;
-            background: white;
+            font-size: 14px;
             transition: border-color 0.3s;
+            font-family: inherit;
         }
-        
-        select:focus {
+
+        .select:focus, .textarea:focus {
             outline: none;
             border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        
+
+        .textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             padding: 15px 30px;
-            font-size: 18px;
             border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            transition: transform 0.2s;
             width: 100%;
-            transition: transform 0.2s, box-shadow 0.2s;
         }
-        
+
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
-        
+
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-        
+
         .status {
-            margin-top: 25px;
-            padding: 20px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
             border-radius: 8px;
-            display: none;
+            border-left: 4px solid #3498db;
         }
-        
-        .status.pending {
-            background: #fff3cd;
-            border: 1px solid #ffeeba;
-            color: #856404;
-            display: block;
-        }
-        
-        .status.processing {
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
-            display: block;
-        }
-        
-        .status.completed {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-            display: block;
-        }
-        
-        .status.failed {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-            display: block;
-        }
-        
+
         .progress-bar {
             width: 100%;
-            height: 6px;
-            background: #e1e1e1;
-            border-radius: 3px;
-            margin: 10px 0;
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
             overflow: hidden;
+            margin-top: 10px;
         }
-        
+
         .progress-fill {
             height: 100%;
-            background: #667eea;
-            border-radius: 3px;
-            transition: width 0.3s;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            transition: width 0.3s ease;
+            border-radius: 4px;
         }
-        
-        .result {
-            margin-top: 25px;
-            display: none;
-        }
-        
-        .result.show {
-            display: block;
-        }
-        
-        .result img {
-            width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .analysis {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        
-        .analysis h3 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        
-        .analysis-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            padding: 5px 0;
-            border-bottom: 1px solid #e1e1e1;
-        }
-        
-        .analysis-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-        
-        .llm-config-info {
-            background: #e8f4fd;
-            border: 1px solid #3498db;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .llm-config-info h4 {
-            margin: 0 0 10px 0;
-            color: #2c3e50;
-            font-size: 14px;
-        }
-        
-        .config-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            padding: 3px 0;
-            font-size: 13px;
-        }
-        
-        .config-item:last-child {
-            margin-bottom: 0;
-        }
-        
-        .config-item span:first-child {
-            font-weight: 500;
-            color: #34495e;
-        }
-        
-        .config-item span:last-child {
-            color: #2980b9;
-            font-family: monospace;
-            word-break: break-all;
-        }
-        
-        .examples {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-        
-        .examples h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-        }
-        
-        .example {
-            background: white;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            border: 1px solid #e1e1e1;
-        }
-        
-        .example:hover {
-            background: #f0f0f0;
-        }
-        
-        .example strong {
-            color: #667eea;
-        }
-        
+
         @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(4, 1fr);
+            }
+            
             body {
                 padding: 10px;
             }
             
-            .header {
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2em;
-            }
-            
-            .main {
+            h1 {
+                font-size: 24px;
                 padding: 20px;
             }
         }
@@ -381,108 +298,119 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🧮 MathViz</h1>
-            <p>将数学应用题转换为直观的可视化图表</p>
-        </div>
+        <h1>🔬 数学可视化生成器 - 多模型并行处理</h1>
         
-        <div class="main">
-            <div class="left-panel">
-                <div class="test-case-controls">
-                    <h4>📝 选择示例题目</h4>
-                    <select id="testCaseSelect" style="width: calc(100% - 120px);">
-                        <option value="">-- 请选择一个示例题目 --</option>
-                    </select>
-                    <button type="button" id="loadTestCase" disabled>加载题目</button>
-                </div>
-                
-                <form id="problemForm">
+        <div class="main-container">
+            <div class="input-panel">
+                <form id="problemForm" class="form">
                     <div class="form-group">
-                        <label for="problemText">📚 输入数学题目：</label>
-                        <textarea 
-                            id="problemText" 
-                            placeholder="请输入完整的数学应用题描述，系统将自动解析并生成可视化图表..."
-                            required
-                        ></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="apiVersion">🔧 API版本：</label>
-                        <select id="apiVersion">
-                            <option value="v2">V2 (AI驱动)</option>
-                            <option value="v1">V1 (传统模式)</option>
+                        <label for="testCaseSelect">📝 选择测试题目:</label>
+                        <select id="testCaseSelect" class="select">
+                            <option value="">-- 请选择测试题目 --</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label for="llmProvider">🤖 AI模型：</label>
-                        <select id="llmProvider">
-                            <option value="openai">OpenAI / Moonshot</option>
-                            <option value="claude">Claude</option>
-                            <option value="qwen">通义千问 (Qwen)</option>
-                            <option value="deepseek">DeepSeek</option>
-                        </select>
-                    </div>
-                    
-                    <!-- LLM配置信息显示区域 -->
-                    <div id="llmConfigInfo" class="llm-config-info" style="display: none;">
-                        <h4>📋 当前模型配置</h4>
-                        <div class="config-item">
-                            <span>提供商：</span>
-                            <span id="currentProvider">-</span>
-                        </div>
-                        <div class="config-item">
-                            <span>Base URL：</span>
-                            <span id="currentBaseUrl">-</span>
-                        </div>
-                        <div class="config-item">
-                            <span>使用的模型：</span>
-                            <span id="currentModel">-</span>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="problemType">🎯 题目类型：</label>
-                        <select id="problemType">
-                            <option value="auto">自动检测</option>
-                            <option value="meeting">相遇问题</option>
-                            <option value="chase">追及问题</option>
-                        </select>
+                        <label for="problemText">🤔 数学问题描述:</label>
+                        <textarea id="problemText" rows="5" class="textarea" 
+                                placeholder="请输入您想要可视化的数学概念或问题..." required></textarea>
                     </div>
                     
                     <button type="submit" class="btn" id="submitBtn">
-                        🚀 生成可视化图表
+                        🚀 同时处理所有模型
                     </button>
                 </form>
                 
-                <div id="status" class="status">
-                    <div id="statusText">正在处理中...</div>
+                <div id="globalStatus" class="status">
+                    <div id="globalStatusText">准备就绪，等待任务提交...</div>
                     <div class="progress-bar">
-                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
-                    </div>
-                </div>
-                
-                <div id="result" class="result">
-                    <img id="resultImage" src="" alt="生成的可视化图表">
-                    <div id="analysis" class="analysis">
-                        <h3>📊 题目分析结果</h3>
-                        <div id="analysisContent"></div>
+                        <div id="globalProgressFill" class="progress-fill" style="width: 0%"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="right-panel">
-                <div class="llm-interaction">
-                    <h3 class="section-title">🤖 LLM交互记录</h3>
-                    
-                    <div class="prompt-section">
-                        <h4>📤 发送给LLM的Prompt:</h4>
-                        <div id="promptContent" class="prompt-content">等待问题提交...</div>
+            <div class="results-grid">
+                <div class="model-result-panel" id="openaiPanel">
+                    <div class="model-header">
+                        <div class="model-name">🤖 OpenAI / Moonshot</div>
+                        <div class="model-status status-waiting" id="openaiStatus">等待中</div>
                     </div>
-                    
-                    <div class="response-section">
-                        <h4>📥 LLM返回结果:</h4>
-                        <div id="responseContent" class="response-content">等待LLM响应...</div>
+                    <div class="model-progress-bar">
+                        <div class="model-progress-fill" id="openaiProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="model-result-content">
+                        <div class="model-image-container">
+                            <img id="openaiImage" class="model-image" src="" alt="OpenAI生成的图表" style="display: none;">
+                            <div id="openaiImagePlaceholder" class="image-placeholder">等待图表生成...</div>
+                        </div>
+                        <div class="model-analysis">
+                            <h4>📊 分析结果</h4>
+                            <div id="openaiAnalysis" class="model-analysis-content">等待分析...</div>
+                        </div>
+                        <div id="openaiTiming" class="model-timing">耗时: --</div>
+                    </div>
+                </div>
+
+                <div class="model-result-panel" id="claudePanel">
+                    <div class="model-header">
+                        <div class="model-name">🧠 Claude / Moonshot</div>
+                        <div class="model-status status-waiting" id="claudeStatus">等待中</div>
+                    </div>
+                    <div class="model-progress-bar">
+                        <div class="model-progress-fill" id="claudeProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="model-result-content">
+                        <div class="model-image-container">
+                            <img id="claudeImage" class="model-image" src="" alt="Claude生成的图表" style="display: none;">
+                            <div id="claudeImagePlaceholder" class="image-placeholder">等待图表生成...</div>
+                        </div>
+                        <div class="model-analysis">
+                            <h4>📊 分析结果</h4>
+                            <div id="claudeAnalysis" class="model-analysis-content">等待分析...</div>
+                        </div>
+                        <div id="claudeTiming" class="model-timing">耗时: --</div>
+                    </div>
+                </div>
+
+                <div class="model-result-panel" id="qwenPanel">
+                    <div class="model-header">
+                        <div class="model-name">🔮 Qwen</div>
+                        <div class="model-status status-waiting" id="qwenStatus">等待中</div>
+                    </div>
+                    <div class="model-progress-bar">
+                        <div class="model-progress-fill" id="qwenProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="model-result-content">
+                        <div class="model-image-container">
+                            <img id="qwenImage" class="model-image" src="" alt="Qwen生成的图表" style="display: none;">
+                            <div id="qwenImagePlaceholder" class="image-placeholder">等待图表生成...</div>
+                        </div>
+                        <div class="model-analysis">
+                            <h4>📊 分析结果</h4>
+                            <div id="qwenAnalysis" class="model-analysis-content">等待分析...</div>
+                        </div>
+                        <div id="qwenTiming" class="model-timing">耗时: --</div>
+                    </div>
+                </div>
+
+                <div class="model-result-panel" id="deepseekPanel">
+                    <div class="model-header">
+                        <div class="model-name">🚀 DeepSeek</div>
+                        <div class="model-status status-waiting" id="deepseekStatus">等待中</div>
+                    </div>
+                    <div class="model-progress-bar">
+                        <div class="model-progress-fill" id="deepseekProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="model-result-content">
+                        <div class="model-image-container">
+                            <img id="deepseekImage" class="model-image" src="" alt="DeepSeek生成的图表" style="display: none;">
+                            <div id="deepseekImagePlaceholder" class="image-placeholder">等待图表生成...</div>
+                        </div>
+                        <div class="model-analysis">
+                            <h4>📊 分析结果</h4>
+                            <div id="deepseekAnalysis" class="model-analysis-content">等待分析...</div>
+                        </div>
+                        <div id="deepseekTiming" class="model-timing">耗时: --</div>
                     </div>
                 </div>
             </div>
@@ -490,624 +418,338 @@
     </div>
 
     <script>
-        const API_BASE_V1 = 'http://localhost:8000/api/v1';
-        const API_BASE_V2 = 'http://localhost:8000/api/v2';
+        const API_BASE_V2 = 'http://localhost:8001/api/v2';
         
-        // LLM提供商配置映射
-        const LLM_PROVIDER_CONFIG = {
+        // 4个模型配置
+        const MODEL_CONFIGS = {
             'openai': {
                 name: 'OpenAI / Moonshot',
-                baseUrl: 'https://api.moonshot.cn/v1',
-                defaultModel: 'kimi-k2-0711-preview'
+                emoji: '🤖',
+                provider: 'openai'
             },
             'claude': {
-                name: 'Claude (Moonshot兼容)',
-                baseUrl: 'https://api.moonshot.cn/anthropic',
-                defaultModel: 'kimi-k2-0711-preview'
+                name: 'Claude / Moonshot',
+                emoji: '🧠',
+                provider: 'claude'
             },
             'qwen': {
-                name: '通义千问 (Qwen)',
-                baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-                defaultModel: 'qwen3-coder-plus'
+                name: 'Qwen',
+                emoji: '🔮',
+                provider: 'qwen'
             },
             'deepseek': {
                 name: 'DeepSeek',
-                baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-                defaultModel: 'deepseek-v3.1'
+                emoji: '🚀',
+                provider: 'deepseek'
             }
         };
-        
-        let currentTaskId = null;
-        let statusTimer = null;
+
         let testCases = [];
-        
-        // 页面加载时初始化
+        let currentTasks = {}; // 存储4个模型的任务ID和状态
+        let modelTimers = {}; // 每个模型的计时器
+        let taskStartTimes = {}; // 任务开始时间
+
+        // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM加载完成，开始初始化...');
+            console.log('DOM加载完成，开始初始化多模型并行处理界面...');
             initializeEventListeners();
             loadTestCases();
         });
-        
+
         // 加载测试用例
         async function loadTestCases() {
             try {
                 console.log('开始加载测试用例...');
                 const response = await fetch('/math_test_case.json');
-                console.log('Fetch响应状态:', response.status, response.statusText);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const text = await response.text();
-                console.log('获取到的文本内容长度:', text.length);
-                console.log('文本内容前200字符:', text.substring(0, 200));
+                console.log('测试用例JSON原始文本:', text);
                 
-                // 解析JSONL格式（每行一个JSON对象）
-                testCases = text.trim().split('\n').map(line => {
-                    try {
-                        return JSON.parse(line);
-                    } catch (e) {
-                        console.warn('解析JSON行失败:', line);
-                        return null;
-                    }
-                }).filter(Boolean);
+                testCases = JSON.parse(text);
+                console.log('解析测试用例成功:', testCases);
                 
-                console.log('解析到的测试用例数量:', testCases.length);
-                
-                // 填充下拉菜单
-                const select = document.getElementById('testCaseSelect');
-                testCases.forEach(testCase => {
-                    const option = document.createElement('option');
-                    option.value = testCase.id;
-                    option.textContent = `${testCase.id}. ${testCase.original_text.substring(0, 50)}...`;
-                    select.appendChild(option);
-                });
-                
-                console.log(`已加载 ${testCases.length} 个测试用例到下拉菜单`);
+                populateTestCaseSelect();
             } catch (error) {
                 console.error('加载测试用例失败:', error);
-                updateLLMInteraction('response', `加载测试用例失败: ${error.message}`);
+                showGlobalStatus(`加载测试用例失败: ${error.message}`, 'error');
             }
         }
-        
+
+        // 填充测试用例选择框
+        function populateTestCaseSelect() {
+            const select = document.getElementById('testCaseSelect');
+            testCases.forEach(testCase => {
+                const option = document.createElement('option');
+                option.value = testCase.id;
+                option.textContent = testCase.title || `测试用例 ${testCase.id}`;
+                select.appendChild(option);
+            });
+            console.log('测试用例选择框填充完成');
+        }
+
         // 初始化事件监听器
         function initializeEventListeners() {
             console.log('开始初始化事件监听器...');
             
-            // 测试用例选择变化
+            // 测试用例选择变化 - 自动填充到输入框
             document.getElementById('testCaseSelect').addEventListener('change', function() {
-                const loadBtn = document.getElementById('loadTestCase');
-                loadBtn.disabled = !this.value;
-                console.log('选择了测试用例:', this.value);
-            });
-            
-            // 加载测试用例按钮
-            document.getElementById('loadTestCase').addEventListener('click', function() {
-                const selectedId = document.getElementById('testCaseSelect').value;
-                const testCase = testCases.find(tc => tc.id === selectedId);
-                if (testCase) {
-                    document.getElementById('problemText').value = testCase.original_text;
-                    updateLLMInteraction('prompt', `加载了测试用例 ${selectedId}: ${testCase.original_text}`);
-                    console.log('加载了测试用例:', selectedId);
-                }
-            });
-            
-            // API版本变化监听
-            document.getElementById('apiVersion').addEventListener('change', function() {
-                const llmProviderGroup = document.getElementById('llmProvider').parentElement;
-                if (this.value === 'v2') {
-                    llmProviderGroup.style.display = 'block';
+                const selectedId = this.value;
+                if (selectedId) {
+                    const testCase = testCases.find(tc => tc.id === selectedId);
+                    if (testCase) {
+                        document.getElementById('problemText').value = testCase.original_text;
+                        console.log('自动加载了测试用例:', selectedId);
+                    }
                 } else {
-                    llmProviderGroup.style.display = 'none';
+                    document.getElementById('problemText').value = '';
                 }
-                updateLLMConfigInfo(); // 更新配置信息显示
             });
             
-            // LLM提供商变化监听
-            document.getElementById('llmProvider').addEventListener('change', function() {
-                updateLLMConfigInfo(); // 更新配置信息显示
-            });
-            
-            // 表单提交
-            document.getElementById('problemForm').addEventListener('submit', handleFormSubmit);
+            // 表单提交 - 并行处理所有模型
+            document.getElementById('problemForm').addEventListener('submit', handleMultiModelSubmit);
             
             console.log('事件监听器初始化完成');
         }
-        
-        // 更新LLM配置信息显示
-        function updateLLMConfigInfo() {
-            const apiVersion = document.getElementById('apiVersion').value;
-            const llmProvider = document.getElementById('llmProvider').value;
-            const configInfoDiv = document.getElementById('llmConfigInfo');
+
+        // 处理多模型并行提交
+        async function handleMultiModelSubmit(event) {
+            event.preventDefault();
             
-            if (apiVersion === 'v2' && llmProvider && LLM_PROVIDER_CONFIG[llmProvider]) {
-                const config = LLM_PROVIDER_CONFIG[llmProvider];
-                
-                document.getElementById('currentProvider').textContent = config.name;
-                document.getElementById('currentBaseUrl').textContent = config.baseUrl;
-                document.getElementById('currentModel').textContent = config.defaultModel;
-                
-                configInfoDiv.style.display = 'block';
-            } else {
-                configInfoDiv.style.display = 'none';
-            }
-        }
-        
-        // 更新LLM交互显示
-        function updateLLMInteraction(type, content) {
-            const elementId = type === 'prompt' ? 'promptContent' : 'responseContent';
-            const element = document.getElementById(elementId);
-            
-            if (typeof content === 'object') {
-                element.textContent = JSON.stringify(content, null, 2);
-            } else {
-                element.textContent = content;
-            }
-            
-            // 滚动到底部
-            element.scrollTop = element.scrollHeight;
-        }
-        
-        // 获取当前选择的API版本
-        function getAPIBase() {
-            const version = document.getElementById('apiVersion').value;
-            return version === 'v2' ? API_BASE_V2 : API_BASE_V1;
-        }
-        
-        // 表单提交处理
-        async function handleFormSubmit(e) {
-            e.preventDefault();
-            
-            const text = document.getElementById('problemText').value.trim();
-            const problemType = document.getElementById('problemType').value;
-            const apiVersion = document.getElementById('apiVersion').value;
-            const llmProvider = document.getElementById('llmProvider').value;
-            
-            if (!text) {
-                alert('请输入题目内容');
+            const problemText = document.getElementById('problemText').value.trim();
+            if (!problemText) {
+                alert('请输入数学问题描述');
                 return;
             }
+
+            console.log('开始多模型并行处理:', problemText);
             
-            // 重置状态
-            resetUI();
+            // 禁用提交按钮
+            document.getElementById('submitBtn').disabled = true;
+            
+            // 重置所有模型的状态
+            resetAllModels();
+            
+            // 显示全局状态
+            showGlobalStatus('正在启动所有模型...', 'processing', 0);
+            
+            // 并行启动所有4个模型
+            const providers = Object.keys(MODEL_CONFIGS);
+            const promises = providers.map(provider => submitToModel(provider, problemText));
             
             try {
-                let requestPayload;
-                let endpoint;
+                // 等待所有模型启动（不等待完成）
+                await Promise.allSettled(promises);
+                console.log('所有模型已启动');
+                showGlobalStatus('所有模型已启动，正在并行处理...', 'processing', 25);
+            } catch (error) {
+                console.error('启动模型时出错:', error);
+                showGlobalStatus(`启动模型失败: ${error.message}`, 'error');
+            } finally {
+                // 重新启用提交按钮
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+
+        // 重置所有模型状态
+        function resetAllModels() {
+            const providers = Object.keys(MODEL_CONFIGS);
+            providers.forEach(provider => {
+                // 重置状态
+                updateModelStatus(provider, '准备中', 'processing');
+                updateModelProgress(provider, 0);
                 
-                if (apiVersion === 'v2') {
-                    // V2 API 请求格式
-                    requestPayload = {
-                        text: text,
-                        user_id: 'demo_user',
-                        llm_provider: llmProvider,
-                        processing_mode: 'ai',
-                        prompt_variant: 'default'
-                    };
-                    endpoint = `${getAPIBase()}/problems/generate`;
-                } else {
-                    // V1 API 请求格式
-                    requestPayload = {
-                        text: text,
-                        problem_type: problemType === 'auto' ? null : problemType,
-                        user_id: 'demo_user'
-                    };
-                    endpoint = `${getAPIBase()}/problems/generate`;
+                // 清空内容
+                const imageElement = document.getElementById(`${provider}Image`);
+                const placeholderElement = document.getElementById(`${provider}ImagePlaceholder`);
+                const analysisElement = document.getElementById(`${provider}Analysis`);
+                const timingElement = document.getElementById(`${provider}Timing`);
+                
+                imageElement.style.display = 'none';
+                imageElement.src = '';
+                placeholderElement.style.display = 'flex';
+                placeholderElement.textContent = '等待图表生成...';
+                analysisElement.textContent = '等待分析...';
+                timingElement.textContent = '耗时: --';
+                
+                // 清除定时器
+                if (modelTimers[provider]) {
+                    clearInterval(modelTimers[provider]);
+                    delete modelTimers[provider];
                 }
+            });
+            
+            // 重置全局状态
+            currentTasks = {};
+            taskStartTimes = {};
+        }
+
+        // 提交到单个模型
+        async function submitToModel(provider, problemText) {
+            try {
+                console.log(`提交到 ${provider} 模型:`, problemText);
                 
-                // 显示发送的请求内容
-                updateLLMInteraction('prompt', `请求参数:\n${JSON.stringify(requestPayload, null, 2)}\n\n发送到端点: ${endpoint}`);
-                updateLLMInteraction('response', '正在等待LLM响应...');
+                updateModelStatus(provider, '提交中', 'processing');
+                updateModelProgress(provider, 10);
                 
-                const response = await fetch(endpoint, {
+                const response = await fetch(`${API_BASE_V2}/problems/generate`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(requestPayload)
+                    body: JSON.stringify({
+                        text: problemText,
+                        user_id: 'demo_user',
+                        llm_provider: provider,
+                        processing_mode: 'ai',
+                        prompt_variant: 'default'
+                    })
                 });
-                
+
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    updateLLMInteraction('response', `请求失败 (${response.status}): ${errorText}`);
-                    throw new Error('提交失败');
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+
+                const data = await response.json();
+                const taskId = data.task_id;
                 
-                const result = await response.json();
-                currentTaskId = result.task_id;
+                console.log(`${provider} 任务已提交，任务ID:`, taskId);
                 
-                // 记录任务开始时间
-                window.taskStartTime = Date.now();
+                // 存储任务信息
+                currentTasks[provider] = taskId;
+                taskStartTimes[provider] = Date.now();
                 
-                // 显示初始响应
-                updateLLMInteraction('response', `任务创建成功:\n${JSON.stringify(result, null, 2)}`);
+                updateModelStatus(provider, '处理中', 'processing');
+                updateModelProgress(provider, 20);
                 
-                // 显示等待状态
-                showStatus('pending', '题目已提交，正在生成可视化图表...');
-                
-                // 开始轮询状态
-                startStatusPolling();
+                // 启动状态轮询
+                startModelStatusPolling(provider, taskId);
                 
             } catch (error) {
-                showStatus('failed', `提交失败: ${error.message}`);
-                updateLLMInteraction('response', `错误: ${error.message}`);
+                console.error(`${provider} 模型提交失败:`, error);
+                updateModelStatus(provider, '提交失败', 'error');
+                throw error;
             }
         }
-        
-        // 重置UI
-        function resetUI() {
-            document.getElementById('status').style.display = 'none';
-            document.getElementById('result').classList.remove('show');
-            document.getElementById('submitBtn').disabled = true;
-            document.getElementById('progressFill').style.width = '0%';
-            
-            // 重置时间跟踪
-            window.taskStartTime = null;
-            
-            if (statusTimer) {
-                clearInterval(statusTimer);
-                statusTimer = null;
+
+        // 开始轮询模型状态
+        function startModelStatusPolling(provider, taskId) {
+            if (modelTimers[provider]) {
+                clearInterval(modelTimers[provider]);
             }
-        }
-        
-        // 显示状态
-        function showStatus(type, message, progress = 0) {
-            const statusDiv = document.getElementById('status');
-            const statusText = document.getElementById('statusText');
-            const progressFill = document.getElementById('progressFill');
             
-            statusDiv.className = `status ${type}`;
-            statusDiv.style.display = 'block';
-            statusText.textContent = message;
-            progressFill.style.width = `${progress}%`;
-        }
-        
-        // 开始状态轮询
-        function startStatusPolling() {
-            const apiVersion = document.getElementById('apiVersion').value;
-            
-            statusTimer = setInterval(async () => {
+            modelTimers[provider] = setInterval(async () => {
                 try {
-                    const endpoint = apiVersion === 'v2' 
-                        ? `${getAPIBase()}/tasks/${currentTaskId}`
-                        : `${getAPIBase()}/problems/status/${currentTaskId}`;
-                    
-                    const response = await fetch(endpoint);
-                    
+                    const response = await fetch(`${API_BASE_V2}/tasks/${taskId}`);
                     if (!response.ok) {
-                        throw new Error('状态查询失败');
+                        throw new Error(`HTTP ${response.status}`);
                     }
                     
-                    const status = await response.json();
+                    const data = await response.json();
+                    console.log(`${provider} 状态更新:`, data);
                     
-                    if (apiVersion === 'v2') {
-                        // V2 API 状态处理
-                        handleV2Status(status);
-                    } else {
-                        // V1 API 状态处理
-                        handleV1Status(status);
+                    // 更新耗时显示
+                    const elapsed = Math.round((Date.now() - taskStartTimes[provider]) / 1000);
+                    document.getElementById(`${provider}Timing`).textContent = `耗时: ${elapsed}s`;
+                    
+                    // 根据状态更新进度和显示
+                    if (data.status === 'completed') {
+                        clearInterval(modelTimers[provider]);
+                        delete modelTimers[provider];
+                        await handleModelCompletion(provider, data);
+                        checkAllModelsCompletion();
+                    } else if (data.status === 'failed') {
+                        clearInterval(modelTimers[provider]);
+                        delete modelTimers[provider];
+                        updateModelStatus(provider, '处理失败', 'error');
+                        checkAllModelsCompletion();
+                    } else if (data.status === 'processing') {
+                        updateModelStatus(provider, '生成中', 'processing');
+                        updateModelProgress(provider, Math.min(80, 20 + elapsed * 2));
                     }
                     
                 } catch (error) {
-                    showStatus('failed', `状态查询失败: ${error.message}`);
-                    clearInterval(statusTimer);
-                    document.getElementById('submitBtn').disabled = false;
+                    console.error(`${provider} 状态查询失败:`, error);
                 }
-            }, 2000); // 每2秒查询一次
+            }, 2000);
         }
-        
-        // 处理V2 API状态
-        function handleV2Status(status) {
-            // 计算已消耗时间
-            const elapsedTime = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
+
+        // 处理模型完成
+        async function handleModelCompletion(provider, data) {
+            console.log(`${provider} 处理完成:`, data);
             
-            // 更新LLM交互信息
-            let statusUpdate = `状态更新 (${new Date().toLocaleTimeString()}) - 已用时: ${elapsedTime}s:\n${JSON.stringify(status, null, 2)}`;
+            updateModelStatus(provider, '完成', 'completed');
+            updateModelProgress(provider, 100);
             
-            // 如果有AI分析结果，显示详细信息
-            if (status.ai_analysis) {
-                statusUpdate += `\n\nAI分析结果:\n${JSON.stringify(status.ai_analysis, null, 2)}`;
+            // 显示结果图片
+            if (data.execution_result && data.execution_result.image_path) {
+                const imageElement = document.getElementById(`${provider}Image`);
+                const placeholderElement = document.getElementById(`${provider}ImagePlaceholder`);
                 
-                // 如果有LLM交互记录，显示完整的prompt和响应
-                if (status.ai_analysis.llm_interaction) {
-                    const interaction = status.ai_analysis.llm_interaction;
-                    updateLLMInteraction('prompt', interaction.full_prompt || interaction.system_prompt + '\n\n' + interaction.user_prompt);
-                    
-                    let responseText = `LLM响应:\n${interaction.response_content}\n\n使用统计:\n${JSON.stringify(interaction.usage_stats, null, 2)}\n\n响应时间: ${interaction.response_time.toFixed(2)}秒`;
-                    
-                    // 如果交互记录中包含模型信息，更新配置显示
-                    if (interaction.model_used) {
-                        document.getElementById('currentModel').textContent = interaction.model_used;
-                        responseText += `\n\n实际使用模型: ${interaction.model_used}`;
-                    }
-                    
-                    // 如果交互记录中包含base_url信息，更新配置显示  
-                    if (interaction.base_url) {
-                        document.getElementById('currentBaseUrl').textContent = interaction.base_url;
-                        responseText += `\n\n实际Base URL: ${interaction.base_url}`;
-                    }
-                    
-                    updateLLMInteraction('response', responseText);
-                }
-            }
-            
-            updateLLMInteraction('response', statusUpdate);
-            
-            switch (status.status) {
-                case 'pending':
-                    showStatus('pending', '任务等待中...', status.progress || 0);
-                    break;
-                    
-                case 'ai_analyzing':
-                    const elapsedTime = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
-                    showStatus('processing', `🤖 AI正在分析题目... (已用时: ${elapsedTime}s)`, status.progress || 10);
-                    break;
-                    
-                case 'code_validating':
-                    const elapsedTime2 = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
-                    showStatus('processing', `🔍 正在验证生成的代码... (已用时: ${elapsedTime2}s)`, status.progress || 40);
-                    break;
-                    
-                case 'executing':
-                    const elapsedTime3 = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
-                    showStatus('processing', `⚡ 正在执行代码生成图表... (已用时: ${elapsedTime3}s)`, status.progress || 70);
-                    break;
-                    
-                case 'completed':
-                    const totalTime = window.taskStartTime ? ((Date.now() - window.taskStartTime) / 1000).toFixed(1) : 0;
-                    showStatus('completed', `图表生成完成！(总用时: ${totalTime}s)`, 100);
-                    clearInterval(statusTimer);
-                    displayV2Result(status);
-                    document.getElementById('submitBtn').disabled = false;
-                    break;
-                    
-                case 'failed':
-                    showStatus('failed', `生成失败: ${status.error_message || '未知错误'}`);
-                    clearInterval(statusTimer);
-                    document.getElementById('submitBtn').disabled = false;
-                    break;
-            }
-        }
-        
-        // 处理V1 API状态
-        function handleV1Status(status) {
-            // 更新LLM交互信息
-            updateLLMInteraction('response', `V1 API状态更新 (${new Date().toLocaleTimeString()}):\n${JSON.stringify(status, null, 2)}`);
-            
-            switch (status.status) {
-                case 'pending':
-                    showStatus('pending', '任务等待中...', status.progress || 0);
-                    break;
-                    
-                case 'processing':
-                    showStatus('processing', '正在生成图表...', status.progress || 50);
-                    break;
-                    
-                case 'completed':
-                    showStatus('completed', '图表生成完成！', 100);
-                    clearInterval(statusTimer);
-                    displayV1Result(status.result);
-                    document.getElementById('submitBtn').disabled = false;
-                    break;
-                    
-                case 'failed':
-                    showStatus('failed', `生成失败: ${status.error || '未知错误'}`);
-                    clearInterval(statusTimer);
-                    document.getElementById('submitBtn').disabled = false;
-                    break;
-            }
-        }
-        
-        // 显示V2 API结果
-        function displayV2Result(status) {
-            const imageElement = document.getElementById('resultImage');
-            const resultDiv = document.getElementById('result');
-            const analysisContent = document.getElementById('analysisContent');
-            
-            // 设置图片源 - V2 API 使用API端点获取图片
-            if (status.execution_result && status.execution_result.image_path) {
                 // 从路径中提取文件名，例如 "output/abc123.png" -> "abc123.png"
-                const imagePath = status.execution_result.image_path;
+                const imagePath = data.execution_result.image_path;
                 const filename = imagePath.split('/').pop(); // 获取文件名部分
-                imageElement.src = `${API_BASE_V2}/images/${filename}`;
-            }
-            
-            // 显示V2分析结果
-            let analysisHTML = '';
-            
-            if (status.ai_analysis) {
-                const analysis = status.ai_analysis;
-                analysisHTML = `
-                    <div class="analysis-item">
-                        <span>API版本：</span>
-                        <span>V2 (AI驱动)</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>LLM提供商：</span>
-                        <span>${analysis.llm_provider || document.getElementById('llmProvider').value}</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>题目类型：</span>
-                        <span>${analysis.problem_type || '未识别'}</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>AI置信度：</span>
-                        <span>${(analysis.confidence * 100).toFixed(1)}%</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>处理时间：</span>
-                        <span>${analysis.processing_time?.toFixed(2)} 秒</span>
-                    </div>
-                `;
+                const imageUrl = `${API_BASE_V2}/images/${filename}`;
+                console.log(`${provider} 图片URL:`, imageUrl);
                 
-                // 显示LLM交互详细信息
-                if (analysis.llm_interaction) {
-                    const interaction = analysis.llm_interaction;
-                    analysisHTML += '<div style="margin-top: 10px; font-weight: bold;">LLM交互信息：</div>';
-                    
-                    if (interaction.model_used) {
-                        analysisHTML += `
-                            <div class="analysis-item">
-                                <span>使用模型：</span>
-                                <span>${interaction.model_used}</span>
-                            </div>
-                        `;
-                    }
-                    
-                    if (interaction.base_url) {
-                        analysisHTML += `
-                            <div class="analysis-item">
-                                <span>API端点：</span>
-                                <span style="font-size: 11px;">${interaction.base_url}</span>
-                            </div>
-                        `;
-                    }
-                    
-                    if (interaction.usage_stats) {
-                        const usage = interaction.usage_stats;
-                        analysisHTML += `
-                            <div class="analysis-item">
-                                <span>Token使用：</span>
-                                <span>${usage.total_tokens || 0} (${usage.input_tokens || usage.prompt_tokens || 0}+${usage.output_tokens || usage.completion_tokens || 0})</span>
-                            </div>
-                        `;
-                    }
-                    
-                    if (interaction.response_time) {
-                        analysisHTML += `
-                            <div class="analysis-item">
-                                <span>响应时间：</span>
-                                <span>${interaction.response_time.toFixed(2)} 秒</span>
-                            </div>
-                        `;
-                    }
-                }
-                
-                // 显示提取的参数
-                if (analysis.parameters && Object.keys(analysis.parameters).length > 0) {
-                    analysisHTML += '<div style="margin-top: 10px; font-weight: bold;">提取的参数：</div>';
-                    for (const [key, value] of Object.entries(analysis.parameters)) {
-                        analysisHTML += `
-                            <div class="analysis-item">
-                                <span>${key}：</span>
-                                <span>${value}</span>
-                            </div>
-                        `;
-                    }
-                }
+                imageElement.src = imageUrl;
+                imageElement.style.display = 'block';
+                placeholderElement.style.display = 'none';
             }
-            
-            if (status.execution_result) {
-                const exec = status.execution_result;
-                analysisHTML += `
-                    <div style="margin-top: 10px; font-weight: bold;">执行结果：</div>
-                    <div class="analysis-item">
-                        <span>执行成功：</span>
-                        <span>${exec.success ? '是' : '否'}</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>执行时间：</span>
-                        <span>${exec.execution_time?.toFixed(2)} 秒</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>内存使用：</span>
-                        <span>${exec.memory_usage?.toFixed(1)} MB</span>
-                    </div>
-                `;
-            }
-            
-            analysisContent.innerHTML = analysisHTML;
-            resultDiv.classList.add('show');
-        }
-        
-        // 显示V1 API结果  
-        function displayV1Result(result) {
-            const imageElement = document.getElementById('resultImage');
-            const resultDiv = document.getElementById('result');
-            const analysisContent = document.getElementById('analysisContent');
-            
-            // 设置图片源
-            imageElement.src = `${API_BASE_V1}/images/${result.image_id}`;
             
             // 显示分析结果
-            const analysis = result.problem_analysis;
-            let analysisHTML = `
-                <div class="analysis-item">
-                    <span>API版本：</span>
-                    <span>V1 (传统模式)</span>
-                </div>
-            `;
-            
-            if (analysis.type === 'meeting') {
-                analysisHTML += `
-                    <div class="analysis-item">
-                        <span>题目类型：</span>
-                        <span>相遇问题</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>总距离：</span>
-                        <span>${analysis.distance} 公里</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>车1速度：</span>
-                        <span>${analysis.speed1} 公里/小时</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>车2速度：</span>
-                        <span>${analysis.speed2} 公里/小时</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>相遇时间：</span>
-                        <span>${analysis.meeting_time?.toFixed(2)} 小时</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>相遇地点：</span>
-                        <span>${analysis.meeting_point?.toFixed(1)} 公里处</span>
-                    </div>
-                `;
-            } else if (analysis.type === 'chase') {
-                analysisHTML += `
-                    <div class="analysis-item">
-                        <span>题目类型：</span>
-                        <span>追及问题</span>
-                    </div>
-                    <div class="analysis-item">
-                        <span>是否能追上：</span>
-                        <span>${analysis.can_chase ? '是' : '否'}</span>
-                    </div>
-                `;
-                if (analysis.chase_time) {
-                    analysisHTML += `
-                        <div class="analysis-item">
-                            <span>追及时间：</span>
-                            <span>${analysis.chase_time.toFixed(2)} 小时</span>
-                        </div>
-                        <div class="analysis-item">
-                            <span>追及地点：</span>
-                            <span>${analysis.chase_point?.toFixed(1)} 公里处</span>
-                        </div>
-                    `;
-                }
+            if (data.ai_analysis && data.ai_analysis.explanation) {
+                const analysisElement = document.getElementById(`${provider}Analysis`);
+                analysisElement.textContent = data.ai_analysis.explanation;
             }
-            
-            analysisContent.innerHTML = analysisHTML;
-            resultDiv.classList.add('show');
         }
-        
-        // 页面加载完成后启用提交按钮并初始化UI
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('submitBtn').disabled = false;
+
+        // 检查所有模型是否完成
+        function checkAllModelsCompletion() {
+            const providers = Object.keys(MODEL_CONFIGS);
+            const completedCount = providers.filter(provider => {
+                const status = document.getElementById(`${provider}Status`).textContent;
+                return status === '完成' || status === '处理失败';
+            }).length;
             
-            // 初始化LLM提供商显示状态
-            const llmProviderGroup = document.getElementById('llmProvider').parentElement;
-            const apiVersion = document.getElementById('apiVersion').value;
-            if (apiVersion === 'v2') {
-                llmProviderGroup.style.display = 'block';
+            if (completedCount === providers.length) {
+                console.log('所有模型处理完成');
+                showGlobalStatus('所有模型处理完成！', 'completed', 100);
             } else {
-                llmProviderGroup.style.display = 'none';
+                const progress = Math.round((completedCount / providers.length) * 75) + 25;
+                showGlobalStatus(`已完成 ${completedCount}/${providers.length} 个模型`, 'processing', progress);
             }
-        });
+        }
+
+        // 更新模型状态
+        function updateModelStatus(provider, statusText, statusClass) {
+            const statusElement = document.getElementById(`${provider}Status`);
+            statusElement.textContent = statusText;
+            statusElement.className = `model-status status-${statusClass}`;
+        }
+
+        // 更新模型进度
+        function updateModelProgress(provider, percentage) {
+            const progressElement = document.getElementById(`${provider}Progress`);
+            progressElement.style.width = `${percentage}%`;
+        }
+
+        // 显示全局状态
+        function showGlobalStatus(message, type, progress = null) {
+            const statusText = document.getElementById('globalStatusText');
+            const progressFill = document.getElementById('globalProgressFill');
+            
+            statusText.textContent = message;
+            
+            if (progress !== null) {
+                progressFill.style.width = `${progress}%`;
+            }
+            
+            console.log('全局状态更新:', message, type, progress);
+        }
     </script>
 </body>
 </html>

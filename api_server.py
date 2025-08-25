@@ -52,6 +52,7 @@ else:
 # 挂载静态文件服务（用于图片）
 if not os.path.exists("output"):
     os.makedirs("output")
+app.mount("/output", StaticFiles(directory="output"), name="output")
 app.mount("/static", StaticFiles(directory="output"), name="static")
 
 # 挂载前端静态文件
@@ -324,14 +325,16 @@ if __name__ == "__main__":
             except OSError:
                 return False
     
-    # 寻找可用端口
-    port = 8000
-    while not is_port_available(port) and port < 8010:
-        port += 1
-    
-    if port >= 8010:
-        print("❌ 无法找到可用端口 (8000-8009)")
-        exit(1)
+    # 固定使用8001端口，避免8000端口的缓存问题
+    port = 8001
+    if not is_port_available(port):
+        print(f"❌ 端口 {port} 不可用，正在寻找其他可用端口...")
+        port = 8002
+        while not is_port_available(port) and port < 8010:
+            port += 1
+        if port >= 8010:
+            print("❌ 无法找到可用端口 (8001-8009)")
+            exit(1)
     
     print(f"🚀 启动服务器在端口 {port}")
     print(f"📖 API文档: http://localhost:{port}/docs")
