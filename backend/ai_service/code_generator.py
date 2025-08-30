@@ -107,7 +107,7 @@ class CodeGenerator:
                         usage_stats=llm_response.usage_stats or {},
                         response_time=llm_response.response_time,
                         timestamp=datetime.now().isoformat()
-                    ) if llm_response.system_prompt else None
+                    ) if llm_response else None
                 )
                 
                 # 记录生成历史

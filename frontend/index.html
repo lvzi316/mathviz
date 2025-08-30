@@ -279,6 +279,82 @@
             border-radius: 4px;
         }
 
+        .prompt-info-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .prompt-section {
+            margin-bottom: 20px;
+        }
+
+        .prompt-section h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .prompt-content {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .prompt-stats {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .model-token-info {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .token-stat {
+            display: inline-block;
+            margin-right: 15px;
+            color: #495057;
+        }
+
+        .token-stat strong {
+            color: #2c3e50;
+        }
+
+        .toggle-prompt-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-prompt-btn:hover {
+            background: #495057;
+        }
+
         @media (max-width: 768px) {
             .results-grid {
                 grid-template-columns: 1fr;
@@ -319,13 +395,32 @@
                     <button type="submit" class="btn" id="submitBtn">
                         🚀 同时处理所有模型
                     </button>
+                    
+                    <div class="button-group" style="margin-top: 10px;">
+                        <button type="button" id="togglePromptBtn" onclick="togglePromptInfo()" class="toggle-btn">
+                            📝 显示/隐藏 Prompt信息
+                        </button>
+                    </div>
                 </form>
                 
                 <div id="globalStatus" class="status">
-                    <div id="globalStatusText">准备就绪，等待任务提交...</div>
+                    <div id="globalStatusText">准备就绪，等待任务提交...
+                    </div>
                     <div class="progress-bar">
                         <div id="globalProgressFill" class="progress-fill" style="width: 0%"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Prompt Information Panel -->
+            <div class="prompt-info-panel" id="promptInfoPanel">
+                <div class="prompt-section">
+                    <h3>📝 System Prompt <span class="prompt-stats" id="systemPromptStats">长度: -- 字符</span></h3>
+                    <div class="prompt-content" id="systemPromptContent">等待任务提交...</div>
+                </div>
+                <div class="prompt-section">
+                    <h3>💬 User Prompt <span class="prompt-stats" id="userPromptStats">长度: -- 字符</span></h3>
+                    <div class="prompt-content" id="userPromptContent">等待任务提交...</div>
                 </div>
             </div>
 
@@ -346,6 +441,10 @@
                         <div class="model-analysis">
                             <h4>📊 分析结果</h4>
                             <div id="openaiAnalysis" class="model-analysis-content">等待分析...</div>
+                        </div>
+                        <div class="model-token-info">
+                            <div class="token-label">🔢 Token使用:</div>
+                            <div id="openaiTokens" class="token-details">等待中...</div>
                         </div>
                         <div id="openaiTiming" class="model-timing">耗时: --</div>
                     </div>
@@ -368,6 +467,10 @@
                             <h4>📊 分析结果</h4>
                             <div id="claudeAnalysis" class="model-analysis-content">等待分析...</div>
                         </div>
+                        <div class="model-token-info">
+                            <div class="token-label">🔢 Token使用:</div>
+                            <div id="claudeTokens" class="token-details">等待中...</div>
+                        </div>
                         <div id="claudeTiming" class="model-timing">耗时: --</div>
                     </div>
                 </div>
@@ -389,6 +492,10 @@
                             <h4>📊 分析结果</h4>
                             <div id="qwenAnalysis" class="model-analysis-content">等待分析...</div>
                         </div>
+                        <div class="model-token-info">
+                            <div class="token-label">🔢 Token使用:</div>
+                            <div id="qwenTokens" class="token-details">等待中...</div>
+                        </div>
                         <div id="qwenTiming" class="model-timing">耗时: --</div>
                     </div>
                 </div>
@@ -409,6 +516,10 @@
                         <div class="model-analysis">
                             <h4>📊 分析结果</h4>
                             <div id="deepseekAnalysis" class="model-analysis-content">等待分析...</div>
+                        </div>
+                        <div class="model-token-info">
+                            <div class="token-label">🔢 Token使用:</div>
+                            <div id="deepseekTokens" class="token-details">等待中...</div>
                         </div>
                         <div id="deepseekTiming" class="model-timing">耗时: --</div>
                     </div>
@@ -519,7 +630,11 @@
         async function handleMultiModelSubmit(event) {
             event.preventDefault();
             
+            console.log('=== 开始表单提交处理 ===');
+            
             const problemText = document.getElementById('problemText').value.trim();
+            console.log('问题文本:', problemText);
+            
             if (!problemText) {
                 alert('请输入数学问题描述');
                 return;
@@ -527,30 +642,49 @@
 
             console.log('开始多模型并行处理:', problemText);
             
-            // 禁用提交按钮
-            document.getElementById('submitBtn').disabled = true;
-            
-            // 重置所有模型的状态
-            resetAllModels();
-            
-            // 显示全局状态
-            showGlobalStatus('正在启动所有模型...', 'processing', 0);
-            
-            // 并行启动所有4个模型
-            const providers = Object.keys(MODEL_CONFIGS);
-            const promises = providers.map(provider => submitToModel(provider, problemText));
-            
             try {
+                // 禁用提交按钮
+                document.getElementById('submitBtn').disabled = true;
+                
+                // 重置所有模型的状态
+                resetAllModels();
+                
+                // 显示全局状态
+                showGlobalStatus('正在启动所有模型...', 'processing', 0);
+                
+                console.log('准备启动模型...');
+                
+                // 并行启动所有4个模型
+                const providers = Object.keys(MODEL_CONFIGS);
+                console.log('提供商列表:', providers);
+                
+                const promises = providers.map(provider => {
+                    console.log(`准备提交到 ${provider}`);
+                    return submitToModel(provider, problemText);
+                });
+                
                 // 等待所有模型启动（不等待完成）
-                await Promise.allSettled(promises);
-                console.log('所有模型已启动');
-                showGlobalStatus('所有模型已启动，正在并行处理...', 'processing', 25);
+                const results = await Promise.allSettled(promises);
+                console.log('所有模型启动结果:', results);
+                
+                // 检查是否有失败的启动
+                const failures = results.filter(result => result.status === 'rejected');
+                if (failures.length > 0) {
+                    console.error('部分模型启动失败:', failures);
+                    showGlobalStatus(`部分模型启动失败 (${failures.length}/${providers.length})`, 'warning', 25);
+                } else {
+                    console.log('所有模型已启动');
+                    showGlobalStatus('所有模型已启动，正在并行处理...', 'processing', 25);
+                }
             } catch (error) {
                 console.error('启动模型时出错:', error);
+                console.error('错误详情:', error.message);
+                console.error('错误堆栈:', error.stack);
                 showGlobalStatus(`启动模型失败: ${error.message}`, 'error');
             } finally {
                 // 重新启用提交按钮
                 document.getElementById('submitBtn').disabled = false;
+                console.log('=== 表单提交处理完成 ===');
             }
         }
 
@@ -590,24 +724,32 @@
         // 提交到单个模型
         async function submitToModel(provider, problemText) {
             try {
-                console.log(`提交到 ${provider} 模型:`, problemText);
+                console.log(`=== 开始提交到 ${provider} 模型 ===`);
+                console.log(`问题文本:`, problemText);
+                console.log(`API地址:`, API_BASE_V2);
                 
                 updateModelStatus(provider, '提交中', 'processing');
                 updateModelProgress(provider, 10);
+                
+                const requestData = {
+                    text: problemText,
+                    user_id: 'demo_user',
+                    llm_provider: provider,
+                    processing_mode: 'ai',
+                    prompt_variant: 'default'
+                };
+                
+                console.log(`${provider} 请求数据:`, requestData);
                 
                 const response = await fetch(`${API_BASE_V2}/problems/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        text: problemText,
-                        user_id: 'demo_user',
-                        llm_provider: provider,
-                        processing_mode: 'ai',
-                        prompt_variant: 'default'
-                    })
+                    body: JSON.stringify(requestData)
                 });
+
+                console.log(`${provider} 响应状态:`, response.status, response.statusText);
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -630,7 +772,9 @@
                 
             } catch (error) {
                 console.error(`${provider} 模型提交失败:`, error);
-                updateModelStatus(provider, '提交失败', 'error');
+                console.error('错误详情:', error.message);
+                console.error('错误堆栈:', error.stack);
+                updateModelStatus(provider, `提交失败: ${error.message}`, 'error');
                 throw error;
             }
         }
@@ -681,6 +825,17 @@
         async function handleModelCompletion(provider, data) {
             console.log(`${provider} 处理完成:`, data);
             
+            // 调试日志
+            if (data.ai_analysis) {
+                console.log(`${provider} AI分析数据:`, data.ai_analysis);
+                if (data.ai_analysis.llm_interaction) {
+                    console.log(`${provider} LLM交互数据:`, data.ai_analysis.llm_interaction);
+                    if (data.ai_analysis.llm_interaction.usage_stats) {
+                        console.log(`${provider} Token使用统计:`, data.ai_analysis.llm_interaction.usage_stats);
+                    }
+                }
+            }
+            
             updateModelStatus(provider, '完成', 'completed');
             updateModelProgress(provider, 100);
             
@@ -704,6 +859,38 @@
             if (data.ai_analysis && data.ai_analysis.explanation) {
                 const analysisElement = document.getElementById(`${provider}Analysis`);
                 analysisElement.textContent = data.ai_analysis.explanation;
+            }
+            
+            // 更新Token使用信息
+            if (data.ai_analysis && data.ai_analysis.llm_interaction && data.ai_analysis.llm_interaction.usage_stats) {
+                updateTokenInfo(provider, data.ai_analysis.llm_interaction.usage_stats);
+            }
+            
+            // 对于第一个完成的模型，显示Prompt信息（因为所有模型使用相同的prompt）
+            if (data.ai_analysis && data.ai_analysis.llm_interaction) {
+                console.log(`${provider} LLM交互数据详情:`, data.ai_analysis.llm_interaction);
+                
+                if (data.ai_analysis.llm_interaction.system_prompt) {
+                    console.log(`${provider} 系统Prompt:`, data.ai_analysis.llm_interaction.system_prompt);
+                }
+                
+                if (data.ai_analysis.llm_interaction.user_prompt) {
+                    console.log(`${provider} 用户Prompt:`, data.ai_analysis.llm_interaction.user_prompt);
+                }
+                
+                // 检查是否已经显示了prompt信息
+                const systemPromptElement = document.getElementById('systemPromptContent');
+                if (!systemPromptElement.textContent || systemPromptElement.textContent === '等待任务提交...') {
+                    console.log(`${provider} 正在显示Prompt信息...`);
+                    updatePromptInfo(
+                        data.ai_analysis.llm_interaction.system_prompt, 
+                        data.ai_analysis.llm_interaction.user_prompt
+                    );
+                } else {
+                    console.log(`${provider} Prompt信息已存在，跳过显示`);
+                }
+            } else {
+                console.log(`${provider} 缺少LLM交互数据:`, data.ai_analysis?.llm_interaction);
             }
         }
 
@@ -749,6 +936,67 @@
             }
             
             console.log('全局状态更新:', message, type, progress);
+        }
+
+        // 切换Prompt信息显示
+        function togglePromptInfo() {
+            const panel = document.getElementById('promptInfoPanel');
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                panel.style.display = 'block';
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        // 更新Prompt信息显示
+        function updatePromptInfo(systemPrompt, userPrompt) {
+            console.log('updatePromptInfo 被调用：', { systemPrompt: systemPrompt?.length, userPrompt: userPrompt?.length });
+            
+            // 更新系统Prompt内容
+            const systemPromptElement = document.getElementById('systemPromptContent');
+            const systemPromptStatsElement = document.getElementById('systemPromptStats');
+            if (systemPromptElement && systemPrompt) {
+                systemPromptElement.textContent = systemPrompt;
+                systemPromptStatsElement.textContent = `长度: ${systemPrompt.length} 字符`;
+                console.log('系统Prompt已更新');
+            }
+            
+            // 更新用户Prompt内容
+            const userPromptElement = document.getElementById('userPromptContent');
+            const userPromptStatsElement = document.getElementById('userPromptStats');
+            if (userPromptElement && userPrompt) {
+                userPromptElement.textContent = userPrompt;
+                userPromptStatsElement.textContent = `长度: ${userPrompt.length} 字符`;
+                console.log('用户Prompt已更新');
+            }
+            
+            // 显示Toggle按钮
+            const toggleBtn = document.getElementById('togglePromptBtn');
+            if (toggleBtn) {
+                toggleBtn.style.display = 'inline-block';
+                console.log('Toggle按钮已显示');
+            }
+            
+            // 显示Prompt面板
+            const promptPanel = document.getElementById('promptInfoPanel');
+            if (promptPanel) {
+                promptPanel.style.display = 'block';
+                console.log('Prompt面板已显示');
+            }
+        }
+
+        // 更新各个模型的Token使用信息
+        function updateTokenInfo(provider, tokenData) {
+            const tokenElement = document.getElementById(`${provider}Tokens`);
+            if (tokenData && tokenData.input_tokens && tokenData.output_tokens && tokenData.total_tokens) {
+                tokenElement.innerHTML = `
+                    <div>输入: ${tokenData.input_tokens.toLocaleString()}</div>
+                    <div>输出: ${tokenData.output_tokens.toLocaleString()}</div>
+                    <div>总计: ${tokenData.total_tokens.toLocaleString()}</div>
+                `;
+            } else {
+                tokenElement.textContent = '暂无数据';
+            }
         }
     </script>
 </body>

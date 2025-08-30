@@ -72,8 +72,8 @@ class DeepSeekClient(BaseLLMClient):
             usage_stats = {}
             if response.usage:
                 usage_stats = {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
+                    "input_tokens": response.usage.prompt_tokens,
+                    "output_tokens": response.usage.completion_tokens,
                     "total_tokens": response.usage.total_tokens
                 }
             
