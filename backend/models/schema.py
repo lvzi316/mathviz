@@ -29,6 +29,10 @@ class TaskStatus(str, Enum):
     EXECUTING = "executing"
     COMPLETED = "completed"
     FAILED = "failed"
+    # 细分的失败状态
+    AI_ANALYSIS_FAILED = "ai_analysis_failed"
+    CODE_EXECUTION_FAILED = "code_execution_failed"
+    API_ERROR = "api_error"
 
 class ProblemRequest(BaseModel):
     """题目处理请求"""
@@ -119,6 +123,32 @@ class ExecutionResult(BaseModel):
         }
     }
 
+class ErrorDetails(BaseModel):
+    """错误详情"""
+    error_type: str = Field(..., description="错误类型")
+    error_message: str = Field(..., description="错误消息")
+    api_response: Optional[str] = Field(None, description="原始API响应")
+    generated_code: Optional[str] = Field(None, description="生成的代码（如果存在）")
+    stack_trace: Optional[str] = Field(None, description="错误堆栈跟踪")
+    validation_errors: Optional[List[str]] = Field(None, description="验证错误列表")
+    execution_logs: Optional[str] = Field(None, description="执行日志")
+    timestamp: str = Field(..., description="错误发生时间")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "error_type": "code_execution_failed",
+                "error_message": "代码执行时发生语法错误",
+                "api_response": None,
+                "generated_code": "import matplotlib.pyplot as plt\n...",
+                "stack_trace": "Traceback (most recent call last):\n...",
+                "validation_errors": ["语法错误: unterminated string literal"],
+                "execution_logs": "开始执行代码...\n错误: 未终止的字符串",
+                "timestamp": "2024-01-01T10:00:00Z"
+            }
+        }
+    }
+
 class TaskInfo(BaseModel):
     """任务信息"""
     task_id: str = Field(..., description="任务ID")
@@ -133,6 +163,10 @@ class TaskInfo(BaseModel):
     ai_analysis: Optional[AIAnalysisResult] = Field(None, description="AI分析结果")
     execution_result: Optional[ExecutionResult] = Field(None, description="执行结果")
     error_message: Optional[str] = Field(None, description="错误信息")
+    
+    # 错误详情
+    error_details: Optional[ErrorDetails] = Field(None, description="详细错误信息")
+    failure_type: Optional[str] = Field(None, description="失败类型")
     
     # LLM交互记录
     llm_interaction: Optional[LLMInteraction] = Field(None, description="LLM交互记录")

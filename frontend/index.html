@@ -285,7 +285,7 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             padding: 20px;
             margin-bottom: 20px;
-            display: none;
+            display: block;
         }
 
         .prompt-section {
@@ -348,7 +348,273 @@
             cursor: pointer;
             font-size: 12px;
             margin-left: 10px;
-            transition: background-color 0.3s;
+        }
+
+        /* 错误信息显示样式 */
+        .error-details-container {
+            margin-top: 15px;
+            border: 1px solid #dc3545;
+            border-radius: 8px;
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .error-details-header {
+            padding: 12px 15px;
+            background: #f5c6cb;
+            border-bottom: 1px solid #dc3545;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .error-details-header:hover {
+            background: #f1b2b7;
+        }
+
+        .error-details-content {
+            padding: 15px;
+            display: none;
+        }
+
+        .error-details-content.expanded {
+            display: block;
+        }
+
+        .error-type-indicator {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .error-type-api_error {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .error-type-json_parse_error {
+            background: #ffa500;
+            color: white;
+        }
+
+        .error-type-validation_error {
+            background: #ff9f00;
+            color: white;
+        }
+
+        .error-type-code_execution_failed {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .error-type-exception {
+            background: #8e44ad;
+            color: white;
+        }
+
+        .error-section {
+            margin-bottom: 15px;
+        }
+
+        .error-section-title {
+            font-weight: 600;
+            color: #721c24;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .error-code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border-left: 4px solid #4299e1;
+        }
+
+        .error-message-block {
+            background: #fff5f5;
+            border-left: 4px solid #fc8181;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .error-api-response {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .error-validation-list {
+            background: #fef5e7;
+            border: 1px solid #f6ad55;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .error-validation-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .error-validation-list li {
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .error-toggle-options {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+
+        .error-toggle-options label {
+            font-size: 12px;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+
+        .error-toggle-options input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        .error-actions {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #dc3545;
+            display: flex;
+            gap: 10px;
+        }
+
+        .error-action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .error-copy-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .error-retry-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .error-copy-btn:hover {
+            background: #5a6268;
+        }
+
+        .error-retry-btn:hover {
+            background: #218838;
+        }
+
+        /* 替换图片区域的错误显示样式 */
+        .error-image-replacement {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            padding: 20px;
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border: 2px dashed #fc8181;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .error-image-replacement.api-error {
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border-color: #fc8181;
+        }
+
+        .error-image-replacement.ai-analysis-failed {
+            background: linear-gradient(135deg, #fffbeb 0%, #fed7aa 100%);
+            border-color: #f6ad55;
+        }
+
+        .error-image-replacement.code-execution-failed {
+            background: linear-gradient(135deg, #fffff0 0%, #fef5e7 100%);
+            border-color: #ecc94b;
+        }
+
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+
+        .error-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .error-subtitle {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 16px;
+            max-width: 300px;
+        }
+
+        .error-actions-inline {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .error-action-btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .error-view-btn {
+            background: #4299e1;
+            color: white;
+        }
+
+        .error-view-btn:hover {
+            background: #3182ce;
+        }
+
+        .error-retry-btn-small {
+            background: #48bb78;
+            color: white;
+        }
+
+        .error-retry-btn-small:hover {
+            background: #38a169;
         }
 
         .toggle-prompt-btn:hover {
@@ -396,11 +662,6 @@
                         🚀 同时处理所有模型
                     </button>
                     
-                    <div class="button-group" style="margin-top: 10px;">
-                        <button type="button" id="togglePromptBtn" onclick="togglePromptInfo()" class="toggle-btn">
-                            📝 显示/隐藏 Prompt信息
-                        </button>
-                    </div>
                 </form>
                 
                 <div id="globalStatus" class="status">
@@ -447,6 +708,16 @@
                             <div id="openaiTokens" class="token-details">等待中...</div>
                         </div>
                         <div id="openaiTiming" class="model-timing">耗时: --</div>
+                        <div id="openaiErrorDetails" class="error-details-container" style="display: none;">
+                            <div class="error-details-header" onclick="toggleErrorDetails('openai')">
+                                <span>
+                                    <span id="openaiErrorType" class="error-type-indicator">错误</span>
+                                    <span id="openaiErrorTitle">查看错误详情</span>
+                                </span>
+                                <span id="openaiErrorToggle">▼</span>
+                            </div>
+                            <div id="openaiErrorContent" class="error-details-content"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -472,6 +743,16 @@
                             <div id="claudeTokens" class="token-details">等待中...</div>
                         </div>
                         <div id="claudeTiming" class="model-timing">耗时: --</div>
+                        <div id="claudeErrorDetails" class="error-details-container" style="display: none;">
+                            <div class="error-details-header" onclick="toggleErrorDetails('claude')">
+                                <span>
+                                    <span id="claudeErrorType" class="error-type-indicator">错误</span>
+                                    <span id="claudeErrorTitle">查看错误详情</span>
+                                </span>
+                                <span id="claudeErrorToggle">▼</span>
+                            </div>
+                            <div id="claudeErrorContent" class="error-details-content"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -497,6 +778,16 @@
                             <div id="qwenTokens" class="token-details">等待中...</div>
                         </div>
                         <div id="qwenTiming" class="model-timing">耗时: --</div>
+                        <div id="qwenErrorDetails" class="error-details-container" style="display: none;">
+                            <div class="error-details-header" onclick="toggleErrorDetails('qwen')">
+                                <span>
+                                    <span id="qwenErrorType" class="error-type-indicator">错误</span>
+                                    <span id="qwenErrorTitle">查看错误详情</span>
+                                </span>
+                                <span id="qwenErrorToggle">▼</span>
+                            </div>
+                            <div id="qwenErrorContent" class="error-details-content"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -522,6 +813,16 @@
                             <div id="deepseekTokens" class="token-details">等待中...</div>
                         </div>
                         <div id="deepseekTiming" class="model-timing">耗时: --</div>
+                        <div id="deepseekErrorDetails" class="error-details-container" style="display: none;">
+                            <div class="error-details-header" onclick="toggleErrorDetails('deepseek')">
+                                <span>
+                                    <span id="deepseekErrorType" class="error-type-indicator">错误</span>
+                                    <span id="deepseekErrorTitle">查看错误详情</span>
+                                </span>
+                                <span id="deepseekErrorToggle">▼</span>
+                            </div>
+                            <div id="deepseekErrorContent" class="error-details-content"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -696,18 +997,26 @@
                 updateModelStatus(provider, '准备中', 'processing');
                 updateModelProgress(provider, 0);
                 
-                // 清空内容
+                // 清空内容，添加null检查
                 const imageElement = document.getElementById(`${provider}Image`);
                 const placeholderElement = document.getElementById(`${provider}ImagePlaceholder`);
                 const analysisElement = document.getElementById(`${provider}Analysis`);
                 const timingElement = document.getElementById(`${provider}Timing`);
                 
-                imageElement.style.display = 'none';
-                imageElement.src = '';
-                placeholderElement.style.display = 'flex';
-                placeholderElement.textContent = '等待图表生成...';
-                analysisElement.textContent = '等待分析...';
-                timingElement.textContent = '耗时: --';
+                if (imageElement) {
+                    imageElement.style.display = 'none';
+                    imageElement.src = '';
+                }
+                if (placeholderElement) {
+                    placeholderElement.style.display = 'flex';
+                    placeholderElement.textContent = '等待图表生成...';
+                }
+                if (analysisElement) {
+                    analysisElement.textContent = '等待分析...';
+                }
+                if (timingElement) {
+                    timingElement.textContent = '耗时: --';
+                }
                 
                 // 清除定时器
                 if (modelTimers[provider]) {
@@ -805,10 +1114,10 @@
                         delete modelTimers[provider];
                         await handleModelCompletion(provider, data);
                         checkAllModelsCompletion();
-                    } else if (data.status === 'failed') {
+                    } else if (data.status === 'failed' || data.status === 'ai_analysis_failed' || data.status === 'code_execution_failed' || data.status === 'api_error') {
                         clearInterval(modelTimers[provider]);
                         delete modelTimers[provider];
-                        updateModelStatus(provider, '处理失败', 'error');
+                        handleModelError(provider, data);
                         checkAllModelsCompletion();
                     } else if (data.status === 'processing') {
                         updateModelStatus(provider, '生成中', 'processing');
@@ -825,6 +1134,12 @@
         async function handleModelCompletion(provider, data) {
             console.log(`${provider} 处理完成:`, data);
             
+            // 检查是否有错误详情
+            if (data.error_details || data.status.includes('failed') || data.status.includes('error')) {
+                handleModelError(provider, data);
+                return;
+            }
+            
             // 调试日志
             if (data.ai_analysis) {
                 console.log(`${provider} AI分析数据:`, data.ai_analysis);
@@ -839,20 +1154,38 @@
             updateModelStatus(provider, '完成', 'completed');
             updateModelProgress(provider, 100);
             
+            // 隐藏错误详情（如果之前显示过）
+            hideErrorDetails(provider);
+            
             // 显示结果图片
             if (data.execution_result && data.execution_result.image_path) {
                 const imageElement = document.getElementById(`${provider}Image`);
-                const placeholderElement = document.getElementById(`${provider}ImagePlaceholder`);
+                const imageContainer = imageElement ? imageElement.parentElement : null;
                 
-                // 从路径中提取文件名，例如 "output/abc123.png" -> "abc123.png"
-                const imagePath = data.execution_result.image_path;
-                const filename = imagePath.split('/').pop(); // 获取文件名部分
-                const imageUrl = `${API_BASE_V2}/images/${filename}`;
-                console.log(`${provider} 图片URL:`, imageUrl);
-                
-                imageElement.src = imageUrl;
-                imageElement.style.display = 'block';
-                placeholderElement.style.display = 'none';
+                if (imageContainer) {
+                    // 恢复原有的图片容器结构（如果被错误显示替换过）
+                    if (!document.getElementById(`${provider}Image`) || !document.getElementById(`${provider}ImagePlaceholder`)) {
+                        imageContainer.innerHTML = `
+                            <img id="${provider}Image" class="model-image" src="" alt="${provider}生成的图表" style="display: none;">
+                            <div id="${provider}ImagePlaceholder" class="image-placeholder">等待图表生成...</div>
+                        `;
+                    }
+                    
+                    const refreshedImageElement = document.getElementById(`${provider}Image`);
+                    const placeholderElement = document.getElementById(`${provider}ImagePlaceholder`);
+                    
+                    if (refreshedImageElement && placeholderElement) {
+                        // 从路径中提取文件名，例如 "output/abc123.png" -> "abc123.png"
+                        const imagePath = data.execution_result.image_path;
+                        const filename = imagePath.split('/').pop(); // 获取文件名部分
+                        const imageUrl = `${API_BASE_V2}/images/${filename}`;
+                        console.log(`${provider} 图片URL:`, imageUrl);
+                        
+                        refreshedImageElement.src = imageUrl;
+                        refreshedImageElement.style.display = 'block';
+                        placeholderElement.style.display = 'none';
+                    }
+                }
             }
             
             // 显示分析结果
@@ -894,6 +1227,210 @@
             }
         }
 
+        // 处理模型错误
+        function handleModelError(provider, data) {
+            console.log(`${provider} 处理失败:`, data);
+            
+            // 更新状态为失败
+            updateModelStatus(provider, '处理失败', 'failed');
+            updateModelProgress(provider, 0);
+            
+            // 获取错误详情
+            let errorDetails = data.error_details;
+            if (!errorDetails && data.error_message) {
+                // 如果没有详细错误信息，创建一个简单的错误详情
+                errorDetails = {
+                    error_type: data.failure_type || 'unknown_error',
+                    error_message: data.error_message,
+                    timestamp: new Date().toISOString()
+                };
+            }
+            
+            if (errorDetails) {
+                // 替换图片区域显示错误
+                replaceImageWithError(provider, errorDetails);
+                // 隐藏原有的错误详情区域
+                hideErrorDetails(provider);
+            }
+        }
+
+        // 替换图片区域显示错误
+        function replaceImageWithError(provider, errorDetails) {
+            const imageContainer = document.getElementById(`${provider}Image`).parentElement;
+            
+            // 创建错误显示HTML
+            const errorIcon = getErrorIcon(errorDetails.error_type);
+            const errorTypeName = getErrorTypeName(errorDetails.error_type);
+            
+            const errorHtml = `
+                <div class="error-image-replacement ${errorDetails.error_type}">
+                    <div class="error-icon">${errorIcon}</div>
+                    <div class="error-title">${errorTypeName}</div>
+                    <div class="error-subtitle">${errorDetails.error_message}</div>
+                    <div class="error-actions-inline">
+                        <button class="error-action-btn-small error-view-btn" onclick="showErrorModal('${provider}', '${errorDetails.timestamp}')">
+                            📋 查看详情
+                        </button>
+                        <button class="error-action-btn-small error-retry-btn-small" onclick="retryModel('${provider}')">
+                            🔄 重试
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            imageContainer.innerHTML = errorHtml;
+            
+            // 将错误详情存储到全局变量中供模态框使用
+            if (!window.errorDetailsStorage) {
+                window.errorDetailsStorage = {};
+            }
+            window.errorDetailsStorage[`${provider}_${errorDetails.timestamp}`] = errorDetails;
+        }
+
+        // 获取错误图标
+        function getErrorIcon(errorType) {
+            switch(errorType) {
+                case 'api_error':
+                    return '🔌';
+                case 'ai_analysis_failed':
+                    return '🤖';
+                case 'code_execution_failed':
+                    return '⚠️';
+                default:
+                    return '❌';
+            }
+        }
+
+        // 显示错误详情模态框
+        function showErrorModal(provider, timestamp) {
+            const errorDetails = window.errorDetailsStorage[`${provider}_${timestamp}`];
+            if (!errorDetails) {
+                console.error('未找到错误详情');
+                return;
+            }
+            
+            // 创建模态框
+            const modalHtml = `
+                <div id="errorModal" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                " onclick="closeErrorModal(event)">
+                    <div style="
+                        background: white;
+                        border-radius: 8px;
+                        max-width: 600px;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                        padding: 0;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                    " onclick="event.stopPropagation()">
+                        <div style="
+                            padding: 20px;
+                            border-bottom: 1px solid #e2e8f0;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        ">
+                            <h3 style="margin: 0; color: #2d3748;">${getErrorTypeName(errorDetails.error_type)} - 详细信息</h3>
+                            <button onclick="closeErrorModal()" style="
+                                background: none;
+                                border: none;
+                                font-size: 20px;
+                                cursor: pointer;
+                                color: #718096;
+                            ">×</button>
+                        </div>
+                        <div style="padding: 20px;">
+                            ${createErrorContent(errorDetails)}
+                            <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end;">
+                                <button onclick="copyErrorDetails('${timestamp}')" style="
+                                    background: #6c757d;
+                                    color: white;
+                                    border: none;
+                                    padding: 8px 16px;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                ">复制错误信息</button>
+                                <button onclick="retryModel('${timestamp}')" style="
+                                    background: #28a745;
+                                    color: white;
+                                    border: none;
+                                    padding: 8px 16px;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                ">重试</button>
+                                <button onclick="closeErrorModal()" style="
+                                    background: #4299e1;
+                                    color: white;
+                                    border: none;
+                                    padding: 8px 16px;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                ">关闭</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 添加模态框到页面
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        // 关闭错误模态框
+        function closeErrorModal(event) {
+            if (event && event.target !== event.currentTarget) {
+                return;
+            }
+            const modal = document.getElementById('errorModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // 显示错误详情
+        function displayErrorDetails(provider, errorDetails) {
+            const errorContainer = document.getElementById(`${provider}ErrorDetails`);
+            const errorTypeElement = document.getElementById(`${provider}ErrorType`);
+            const errorTitleElement = document.getElementById(`${provider}ErrorTitle`);
+            const errorContentElement = document.getElementById(`${provider}ErrorContent`);
+            
+            if (!errorContainer || !errorTypeElement || !errorTitleElement || !errorContentElement) {
+                console.warn(`Error detail elements not found for provider: ${provider}`);
+                return;
+            }
+            
+            // 设置错误类型标识
+            errorTypeElement.className = `error-type-indicator error-type-${errorDetails.error_type}`;
+            errorTypeElement.textContent = getErrorTypeName(errorDetails.error_type);
+            
+            // 设置错误标题
+            errorTitleElement.textContent = errorDetails.error_message;
+            
+            // 创建错误内容
+            const errorContent = createErrorContent(errorDetails);
+            errorContentElement.innerHTML = errorContent;
+            
+            // 显示错误容器
+            errorContainer.style.display = 'block';
+        }
+
+        // 隐藏错误详情
+        function hideErrorDetails(provider) {
+            const errorContainer = document.getElementById(`${provider}ErrorDetails`);
+            if (errorContainer) {
+                errorContainer.style.display = 'none';
+            }
+        }
+
         // 检查所有模型是否完成
         function checkAllModelsCompletion() {
             const providers = Object.keys(MODEL_CONFIGS);
@@ -914,14 +1451,18 @@
         // 更新模型状态
         function updateModelStatus(provider, statusText, statusClass) {
             const statusElement = document.getElementById(`${provider}Status`);
-            statusElement.textContent = statusText;
-            statusElement.className = `model-status status-${statusClass}`;
+            if (statusElement) {
+                statusElement.textContent = statusText;
+                statusElement.className = `model-status status-${statusClass}`;
+            }
         }
 
         // 更新模型进度
         function updateModelProgress(provider, percentage) {
             const progressElement = document.getElementById(`${provider}Progress`);
-            progressElement.style.width = `${percentage}%`;
+            if (progressElement) {
+                progressElement.style.width = `${percentage}%`;
+            }
         }
 
         // 显示全局状态
@@ -929,9 +1470,11 @@
             const statusText = document.getElementById('globalStatusText');
             const progressFill = document.getElementById('globalProgressFill');
             
-            statusText.textContent = message;
+            if (statusText) {
+                statusText.textContent = message;
+            }
             
-            if (progress !== null) {
+            if (progress !== null && progressFill) {
                 progressFill.style.width = `${progress}%`;
             }
             
@@ -996,6 +1539,340 @@
                 `;
             } else {
                 tokenElement.textContent = '暂无数据';
+            }
+        }
+
+        // 错误处理相关函数
+
+        // 获取错误类型的显示名称
+        function getErrorTypeName(errorType) {
+            const typeNames = {
+                'api_error': 'API错误',
+                'json_parse_error': 'JSON解析错误', 
+                'validation_error': '验证错误',
+                'code_execution_failed': '代码执行失败',
+                'exception': '程序异常',
+                'max_retries_exceeded': '重试次数超限',
+                'unknown_error': '未知错误'
+            };
+            return typeNames[errorType] || '未知错误';
+        }
+
+        // 创建错误内容HTML
+        function createErrorContent(errorDetails) {
+            let content = '';
+            
+            // 添加错误信息选择选项
+            content += `
+                <div class="error-toggle-options">
+                    <label>显示模式:</label>
+                    <input type="radio" id="simple_${errorDetails.timestamp}" name="errorMode_${errorDetails.timestamp}" value="simple" checked onchange="toggleErrorMode(this, '${errorDetails.timestamp}')">
+                    <label for="simple_${errorDetails.timestamp}">简化版</label>
+                    <input type="radio" id="detailed_${errorDetails.timestamp}" name="errorMode_${errorDetails.timestamp}" value="detailed" onchange="toggleErrorMode(this, '${errorDetails.timestamp}')">
+                    <label for="detailed_${errorDetails.timestamp}">详细信息</label>
+                </div>
+            `;
+
+            // 简化版内容
+            content += `<div id="simple_content_${errorDetails.timestamp}" class="error-view-content">`;
+            
+            // 错误消息（简化版）
+            content += `
+                <div class="error-section">
+                    <div class="error-section-title">错误信息</div>
+                    <div class="error-message-block">${escapeHtml(errorDetails.error_message)}</div>
+                </div>
+            `;
+
+            // 如果有生成的代码，显示代码预览（简化版只显示前500字符）
+            if (errorDetails.generated_code) {
+                const codePreview = errorDetails.generated_code.length > 500 
+                    ? errorDetails.generated_code.substring(0, 500) + '...\n\n[切换到"详细信息"查看完整代码]'
+                    : errorDetails.generated_code;
+                content += `
+                    <div class="error-section">
+                        <div class="error-section-title">生成的代码</div>
+                        <div class="error-code-block">${escapeHtml(codePreview)}</div>
+                    </div>
+                `;
+            }
+
+            content += `</div>`;
+
+            // 详细版内容
+            content += `<div id="detailed_content_${errorDetails.timestamp}" class="error-view-content" style="display: none;">`;
+            
+            // 错误消息（详细版）
+            content += `
+                <div class="error-section">
+                    <div class="error-section-title">错误信息</div>
+                    <div class="error-message-block">${escapeHtml(errorDetails.error_message)}</div>
+                </div>
+            `;
+
+            // API响应（详细版）
+            if (errorDetails.api_response) {
+                content += `
+                    <div class="error-section">
+                        <div class="error-section-title">API响应</div>
+                        <div class="error-api-response">${escapeHtml(errorDetails.api_response)}</div>
+                    </div>
+                `;
+            }
+
+            // 生成的代码（详细版 - 完整代码）
+            if (errorDetails.generated_code) {
+                content += `
+                    <div class="error-section">
+                        <div class="error-section-title">完整生成的代码</div>
+                        <div class="error-code-block">${escapeHtml(errorDetails.generated_code)}</div>
+                    </div>
+                `;
+            }
+
+            // 验证错误（详细版）
+            if (errorDetails.validation_errors && errorDetails.validation_errors.length > 0) {
+                content += `
+                    <div class="error-section">
+                        <div class="error-section-title">验证错误</div>
+                        <div class="error-validation-list">
+                            <ul>
+                                ${errorDetails.validation_errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 堆栈跟踪（详细版）
+            if (errorDetails.stack_trace) {
+                content += `
+                    <div class="error-section">
+                        <div class="error-section-title">堆栈跟踪</div>
+                        <div class="error-code-block">${escapeHtml(errorDetails.stack_trace)}</div>
+                    </div>
+                `;
+            }
+
+            // 执行日志（详细版）
+            if (errorDetails.execution_logs) {
+                content += `
+                    <div class="error-section">
+                        <div class="error-section-title">执行日志</div>
+                        <div class="error-api-response">${escapeHtml(errorDetails.execution_logs)}</div>
+                    </div>
+                `;
+            }
+
+            content += `</div>`;
+
+            return content;
+        }
+
+        // 切换错误显示模式
+        function toggleErrorMode(radio, timestamp) {
+            const simpleContent = document.getElementById(`simple_content_${timestamp}`);
+            const detailedContent = document.getElementById(`detailed_content_${timestamp}`);
+            
+            // 检查DOM元素是否存在，避免null错误
+            if (!simpleContent || !detailedContent) {
+                console.warn(`Error content elements not found for timestamp: ${timestamp}`);
+                return;
+            }
+            
+            if (radio.value === 'simple') {
+                simpleContent.style.display = 'block';
+                detailedContent.style.display = 'none';
+            } else {
+                simpleContent.style.display = 'none';
+                detailedContent.style.display = 'block';
+            }
+        }
+
+        // 切换错误详情展开/折叠
+        function toggleErrorDetails(provider) {
+            const content = document.getElementById(`${provider}ErrorContent`);
+            const toggle = document.getElementById(`${provider}ErrorToggle`);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                toggle.textContent = '▲';
+            }
+        }
+
+        // 复制错误详情到剪贴板
+        function copyErrorDetails(timestamp) {
+            try {
+                // 构建错误信息文本
+                let errorText = '';
+                
+                // 从模态框中获取错误信息，如果模态框存在的话
+                const modal = document.getElementById('errorModal');
+                if (modal) {
+                    const title = modal.querySelector('h3');
+                    if (title) {
+                        errorText += `${title.textContent}\n`;
+                        errorText += '='.repeat(50) + '\n\n';
+                    }
+                    
+                    // 获取错误内容
+                    const errorSections = modal.querySelectorAll('.error-section');
+                    errorSections.forEach(section => {
+                        const titleElement = section.querySelector('.error-section-title');
+                        const contentElement = section.querySelector('.error-message-block, .error-code-block, .error-api-response, .error-validation-list');
+                        
+                        if (titleElement && contentElement) {
+                            errorText += `${titleElement.textContent}:\n`;
+                            errorText += `${contentElement.textContent}\n\n`;
+                        }
+                    });
+                } else {
+                    // 如果没有模态框，提供基本的错误信息
+                    errorText = `错误时间戳: ${timestamp}\n无法获取详细错误信息，请查看界面上的错误显示。`;
+                }
+                
+                // 添加时间戳信息
+                errorText += `\n时间戳: ${timestamp}\n`;
+                errorText += `复制时间: ${new Date().toLocaleString()}\n`;
+                
+                // 使用 Clipboard API 复制到剪贴板
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(errorText).then(() => {
+                        alert('✅ 错误信息已复制到剪贴板');
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                        fallbackCopyTextToClipboard(errorText);
+                    });
+                } else {
+                    // 兼容性回退方案
+                    fallbackCopyTextToClipboard(errorText);
+                }
+            } catch (error) {
+                console.error('复制错误信息失败:', error);
+                alert('❌ 复制失败，请手动选择并复制错误信息');
+            }
+        }
+        
+        // 兼容性复制函数
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            textArea.style.width = '2em';
+            textArea.style.height = '2em';
+            textArea.style.padding = '0';
+            textArea.style.border = 'none';
+            textArea.style.outline = 'none';
+            textArea.style.boxShadow = 'none';
+            textArea.style.background = 'transparent';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('✅ 错误信息已复制到剪贴板');
+                } else {
+                    alert('❌ 复制失败，请手动选择并复制错误信息');
+                }
+            } catch (err) {
+                console.error('Fallback: 复制失败:', err);
+                alert('❌ 复制失败，请手动选择并复制错误信息');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        // 重试模型
+        function retryModel(provider) {
+            // 这里可以实现重试功能
+            console.log('重试模型:', provider);
+            alert('重试功能尚未实现');
+        }
+
+        // HTML转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 获取错误类型名称
+        function getErrorTypeName(errorType) {
+            const typeNames = {
+                'api_error': 'API错误',
+                'json_parse_error': 'JSON解析错误',
+                'validation_error': '验证错误',
+                'code_execution_failed': '代码执行失败',
+                'exception': '程序异常',
+                'max_retries_exceeded': '重试次数超限',
+                'unknown_error': '未知错误'
+            };
+            return typeNames[errorType] || '未知错误';
+        }
+
+        // 创建错误内容HTML
+        // 测试错误场景函数
+        async function testErrorScenario(errorType) {
+            try {
+                console.log(`开始测试${errorType}错误场景...`);
+                
+                // 调用后端测试端点
+                const response = await fetch(`${API_BASE_V2}/test/error/${errorType}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log(`${errorType}测试响应:`, data);
+
+                const taskId = data.task_id;
+
+                // 获取任务详情
+                const taskResponse = await fetch(`${API_BASE_V2}/tasks/${taskId}`);
+                if (taskResponse.ok) {
+                    const taskData = await taskResponse.json();
+                    console.log(`任务详情:`, taskData);
+
+                    // 根据错误类型选择一个模型面板来显示错误
+                    let provider;
+                    switch(errorType) {
+                        case 'api_error':
+                            provider = 'openai';
+                            break;
+                        case 'ai_analysis_failed':
+                            provider = 'claude';
+                            break;
+                        case 'code_execution_failed':
+                            provider = 'qwen';
+                            break;
+                        default:
+                            provider = 'deepseek';
+                    }
+
+                    // 模拟任务处理失败
+                    handleModelError(provider, taskData);
+                    
+                    alert(`${errorType}错误场景测试完成！请查看${provider}模型面板。`);
+                } else {
+                    throw new Error('获取任务详情失败');
+                }
+
+            } catch (error) {
+                console.error(`${errorType}测试失败:`, error);
+                alert(`${errorType}测试失败: ${error.message}`);
             }
         }
     </script>

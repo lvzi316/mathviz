@@ -8,11 +8,12 @@ AI代码生成器
 import json
 import time
 import uuid
+import traceback
 from datetime import datetime
 from typing import Dict, Any, Optional
 
 from backend.models.schema import (
-    LLMProvider, AIAnalysisResult, LLMResponse, LLMInteraction
+    LLMProvider, AIAnalysisResult, LLMResponse, LLMInteraction, ErrorDetails
 )
 from backend.ai_service.llm_client import get_llm_manager
 
@@ -29,7 +30,7 @@ class CodeGenerator:
                                         output_path: str,
                                         provider: LLMProvider = LLMProvider.OPENAI,
                                         template_variant: str = "default",
-                                        max_retries: int = 3) -> AIAnalysisResult:
+                                        max_retries: int = 3) -> tuple[AIAnalysisResult, Optional[ErrorDetails]]:
         """
         生成可视化代码
         
@@ -41,10 +42,11 @@ class CodeGenerator:
             max_retries: 最大重试次数
             
         Returns:
-            AIAnalysisResult: 分析结果
+            tuple[AIAnalysisResult, Optional[ErrorDetails]]: 分析结果和错误详情
         """
         start_time = time.time()
         generation_id = str(uuid.uuid4())
+        last_error_details = None
         
         for attempt in range(max_retries):
             try:
@@ -58,34 +60,71 @@ class CodeGenerator:
                 )
                 
                 if not llm_response.success:
+                    # API调用失败
+                    last_error_details = ErrorDetails(
+                        error_type="api_error",
+                        error_message=llm_response.error_message or "API调用失败",
+                        api_response=llm_response.content if llm_response.content else None,
+                        generated_code=None,
+                        stack_trace=None,
+                        validation_errors=None,
+                        execution_logs=None,
+                        timestamp=datetime.now().isoformat()
+                    )
+                    
                     if attempt == max_retries - 1:
                         # 最后一次尝试失败，返回错误结果
                         return self._create_error_result(
                             f"LLM调用失败: {llm_response.error_message}",
                             time.time() - start_time
-                        )
+                        ), last_error_details
                     continue
                 
                 # 解析LLM响应
                 parsed_result = self._parse_llm_response(llm_response.content)
                 
                 if parsed_result is None:
+                    # JSON解析失败
+                    last_error_details = ErrorDetails(
+                        error_type="json_parse_error",
+                        error_message="无法解析LLM响应为有效JSON格式",
+                        api_response=llm_response.content,
+                        generated_code=None,
+                        stack_trace=traceback.format_exc(),
+                        validation_errors=["JSON格式错误"],
+                        execution_logs=None,
+                        timestamp=datetime.now().isoformat()
+                    )
+                    
                     if attempt == max_retries - 1:
                         return self._create_error_result(
                             "无法解析LLM响应为有效JSON格式",
                             time.time() - start_time
-                        )
+                        ), last_error_details
                     continue
                 
                 # 验证结果完整性
                 validation_result = self._validate_generation_result(parsed_result)
                 
                 if not validation_result["valid"]:
+                    # 验证失败
+                    generated_code = parsed_result.get("visualization_code", "")
+                    last_error_details = ErrorDetails(
+                        error_type="validation_error",
+                        error_message=f"生成结果验证失败: {validation_result['error']}",
+                        api_response=llm_response.content,
+                        generated_code=generated_code if generated_code else None,
+                        stack_trace=None,
+                        validation_errors=[validation_result['error']],
+                        execution_logs=None,
+                        timestamp=datetime.now().isoformat()
+                    )
+                    
                     if attempt == max_retries - 1:
                         return self._create_error_result(
                             f"生成结果验证失败: {validation_result['error']}",
                             time.time() - start_time
-                        )
+                        ), last_error_details
                     continue
                 
                 # 直接设置固定置信度（通过验证的代码都认为是可信的）
@@ -113,20 +152,45 @@ class CodeGenerator:
                 # 记录生成历史
                 self._record_generation(generation_id, problem_text, provider, result, llm_response)
                 
-                return result
+                return result, None  # 成功时返回None作为错误详情
                 
             except Exception as e:
+                # 程序异常
+                last_error_details = ErrorDetails(
+                    error_type="exception",
+                    error_message=f"代码生成异常: {str(e)}",
+                    api_response=None,
+                    generated_code=None,
+                    stack_trace=traceback.format_exc(),
+                    validation_errors=None,
+                    execution_logs=None,
+                    timestamp=datetime.now().isoformat()
+                )
+                
                 if attempt == max_retries - 1:
                     return self._create_error_result(
                         f"代码生成异常: {str(e)}",
                         time.time() - start_time
-                    )
+                    ), last_error_details
                 continue
+        
+        # 所有重试都失败了
+        if last_error_details is None:
+            last_error_details = ErrorDetails(
+                error_type="max_retries_exceeded",
+                error_message=f"代码生成失败，已重试{max_retries}次",
+                api_response=None,
+                generated_code=None,
+                stack_trace=None,
+                validation_errors=None,
+                execution_logs=None,
+                timestamp=datetime.now().isoformat()
+            )
         
         return self._create_error_result(
             f"代码生成失败，已重试{max_retries}次",
             time.time() - start_time
-        )
+        ), last_error_details
     
     def _parse_llm_response(self, content: str) -> Optional[Dict[str, Any]]:
         """

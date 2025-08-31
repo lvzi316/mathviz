@@ -14,8 +14,8 @@ from fastapi.responses import JSONResponse
 
 from backend.models.schema import (
     ProblemRequest, TaskResponse, TaskInfo, HealthStatus,
-    LLMProvider, ProcessingMode, TaskStatus,
-    AIAnalysisResult, ExecutionResult
+    TaskStatus, LLMProvider, ProcessingMode, AIAnalysisResult, 
+    ExecutionResult, ErrorDetails
 )
 from backend.ai_service import get_code_generator, get_llm_manager
 from backend.execution import get_sandbox_manager
@@ -58,7 +58,7 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
         code_generator = get_code_generator()
         
         try:
-            ai_result = await code_generator.generate_visualization_code(
+            ai_result, error_details = await code_generator.generate_visualization_code(
                 problem_text=request.text,
                 output_path=f"output/{task_id}.png",
                 provider=request.llm_provider,
@@ -72,6 +72,10 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
             print(f"📐 [TASK-{task_id}] 参数: {ai_result.parameters}")
             print(f"💬 [TASK-{task_id}] 说明: {ai_result.explanation[:100]}...")
             print(f"📝 [TASK-{task_id}] 代码长度: {len(ai_result.visualization_code)} 字符")
+            
+            # 如果有错误详情，记录它们
+            if error_details:
+                print(f"⚠️  [TASK-{task_id}] 有错误详情: {error_details.error_type} - {error_details.error_message}")
             
             # 添加详细的LLM交互调试信息
             if hasattr(ai_result, 'llm_interaction') and ai_result.llm_interaction:
@@ -90,7 +94,27 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
             print(f"🔍 [TASK-{task_id}] 异常类型: {type(llm_error).__name__}")
             import traceback
             traceback.print_exc()
-            update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
+            
+            # 创建异常错误详情
+            exception_error_details = ErrorDetails(
+                error_type="exception",
+                error_message=error_msg,
+                api_response=None,
+                generated_code=None,
+                stack_trace=traceback.format_exc(),
+                validation_errors=None,
+                execution_logs=None,
+                timestamp=datetime.now().isoformat()
+            )
+            
+            update_task_status(
+                task_id, 
+                TaskStatus.API_ERROR, 
+                0, 
+                error=error_msg,
+                error_details=exception_error_details,
+                failure_type="api_error"
+            )
             return
         
         # 检查AI生成是否成功（临时降低置信度阈值用于调试）
@@ -106,7 +130,16 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
             print(f"   说明: {ai_result.explanation}")
             print(f"   代码前200字符: {ai_result.visualization_code[:200]}...")
             
-            update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
+            # 如果有error_details，使用AI_ANALYSIS_FAILED状态；否则使用通用FAILED状态
+            status_to_use = TaskStatus.AI_ANALYSIS_FAILED if error_details else TaskStatus.FAILED
+            update_task_status(
+                task_id, 
+                status_to_use, 
+                0, 
+                error=error_msg,
+                error_details=error_details,
+                failure_type="ai_analysis_failed"
+            )
             return
         
         # 更新任务状态：代码验证中
@@ -132,7 +165,27 @@ async def process_ai_visualization_task(task_id: str, request: ProblemRequest):
             error_msg = f"代码执行失败: {sandbox_result['error_message']}"
             print(f"❌ [TASK-{task_id}] {error_msg}")
             print(f"🔍 [TASK-{task_id}] 详细错误信息: {sandbox_result}")
-            update_task_status(task_id, TaskStatus.FAILED, 0, error=error_msg)
+            
+            # 创建代码执行失败的错误详情
+            execution_error_details = ErrorDetails(
+                error_type="code_execution_failed",
+                error_message=error_msg,
+                api_response=None,
+                generated_code=ai_result.visualization_code,  # 保存生成的代码
+                stack_trace=sandbox_result.get('error_message', ''),
+                validation_errors=sandbox_result.get('validation_result', {}).get('syntax_errors', []),
+                execution_logs=sandbox_result.get('execution_result', {}).get('output_logs', '') if sandbox_result.get('execution_result') else '',
+                timestamp=datetime.now().isoformat()
+            )
+            
+            update_task_status(
+                task_id, 
+                TaskStatus.CODE_EXECUTION_FAILED, 
+                0, 
+                error=error_msg,
+                error_details=execution_error_details,
+                failure_type="code_execution_failed"
+            )
             return
         
         # 更新任务状态：完成
@@ -157,6 +210,8 @@ def update_task_status(task_id: str, status: TaskStatus, progress: int,
                       ai_analysis: Optional[AIAnalysisResult] = None,
                       execution_result: Optional[ExecutionResult] = None,
                       error: Optional[str] = None,
+                      error_details: Optional[ErrorDetails] = None,
+                      failure_type: Optional[str] = None,
                       llm_interaction: Optional[Dict[str, Any]] = None):
     """更新任务状态"""
     if task_id in task_storage:
@@ -171,6 +226,10 @@ def update_task_status(task_id: str, status: TaskStatus, progress: int,
             task_info.execution_result = execution_result
         if error:
             task_info.error_message = error
+        if error_details:
+            task_info.error_details = error_details
+        if failure_type:
+            task_info.failure_type = failure_type
         if llm_interaction:
             from ..models.schema import LLMInteraction
             task_info.llm_interaction = LLMInteraction(**llm_interaction)
@@ -484,6 +543,100 @@ async def test_llm_connection(provider: LLMProvider):
         return {"success": success, "message": f"{provider.value}连接{'成功' if success else '失败'}"}
     except Exception as e:
         return {"success": False, "message": f"连接测试异常: {str(e)}"}
+
+
+@router.post("/test/error/{error_type}")
+async def test_error_scenario(error_type: str):
+    """
+    测试错误场景的端点
+    error_type: api_error, ai_analysis_failed, code_execution_failed
+    """
+    import uuid
+    from datetime import datetime
+    
+    task_id = f"test_error_{uuid.uuid4().hex[:8]}"
+    
+    # 先创建任务
+    task_info = TaskInfo(
+        task_id=task_id,
+        status=TaskStatus.PENDING,
+        progress=0,
+        created_at=datetime.now().isoformat(),
+        updated_at=datetime.now().isoformat(),
+        processing_mode=ProcessingMode.AI
+    )
+    task_storage[task_id] = task_info
+    
+    # 创建不同类型的错误详情
+    if error_type == "api_error":
+        error_details = ErrorDetails(
+            error_type="api_error",
+            error_message="API调用失败: 无效的API密钥",
+            api_response='{"error": {"type": "invalid_api_key", "message": "Invalid API key provided", "code": "invalid_api_key"}}',
+            timestamp=datetime.now().isoformat()
+        )
+        update_task_status(task_id, TaskStatus.API_ERROR, 0, error_details=error_details)
+        
+    elif error_type == "ai_analysis_failed":
+        error_details = ErrorDetails(
+            error_type="ai_analysis_failed", 
+            error_message="LLM生成的代码格式不正确",
+            api_response='{"choices": [{"message": {"content": "这是一个无效的代码响应，缺少必要的Python代码块"}}]}',
+            validation_errors=[
+                "缺少必要的import语句",
+                "函数定义不完整", 
+                "代码块格式错误",
+                "未找到有效的matplotlib绘图代码"
+            ],
+            timestamp=datetime.now().isoformat()
+        )
+        update_task_status(task_id, TaskStatus.AI_ANALYSIS_FAILED, 0, error_details=error_details)
+        
+    elif error_type == "code_execution_failed":
+        error_details = ErrorDetails(
+            error_type="code_execution_failed",
+            error_message="代码执行过程中发生错误",
+            generated_code='''import matplotlib.pyplot as plt
+import numpy as np
+
+# 这段代码会导致错误
+x = np.linspace(-10, 10, 100)
+y = x ** 2
+plt.plot(x, y)
+plt.title("函数 y = x²的图像")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.save_fig("invalid_method.png")  # 错误的方法名
+plt.show()''',
+            stack_trace='''Traceback (most recent call last):
+  File "/tmp/temp_math_viz_abc123.py", line 10, in <module>
+    plt.save_fig("invalid_method.png")
+AttributeError: module 'matplotlib.pyplot' has no attribute 'save_fig'
+Did you mean: 'savefig'?''',
+            execution_logs='''开始执行代码...
+导入matplotlib.pyplot模块成功
+导入numpy模块成功
+生成数据点成功: x范围[-10, 10], 100个点
+绘制曲线成功
+设置标题成功: "函数 y = x²的图像"
+设置x轴标签成功: "x"
+设置y轴标签成功: "y"
+尝试保存图片...
+错误: 'save_fig' 方法不存在，应该使用 'savefig'
+执行失败!''',
+            timestamp=datetime.now().isoformat()
+        )
+        update_task_status(task_id, TaskStatus.CODE_EXECUTION_FAILED, 0, error_details=error_details)
+        
+    else:
+        return {"error": f"不支持的错误类型: {error_type}"}
+    
+    return {
+        "task_id": task_id,
+        "error_type": error_type,
+        "message": f"已创建{error_type}类型的测试错误场景",
+        "task_url": f"/api/v2/tasks/{task_id}"
+    }
 
 # 导出路由器
 __all__ = ['router']
